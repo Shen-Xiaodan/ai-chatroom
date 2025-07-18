@@ -12,7 +12,7 @@ const openai = new OpenAI({
   baseURL: 'https://api.siliconflow.cn/v1'
 });
 
-app.use(express.static('public'));
+app.use(express.static('src'));
 app.use(express.json());
 app.use(cors());
 
