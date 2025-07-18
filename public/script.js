@@ -85,16 +85,53 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 移除"正在输入"状态
         chatMessages.removeChild(typingIndicator);
-        
+
         if (!response.ok) {
-          throw new Error('Network response was not ok');
+          const errorData = await response.json().catch(() => ({}));
+
+          if (response.status === 429) {
+            // 处理频率限制错误
+            const retryAfter = errorData.retryAfter || '30s';
+            const retrySeconds = parseInt(retryAfter.replace('s', ''));
+
+            addAIMessage(`🚫 请求过于频繁，请等待 ${retryAfter} 后重试。\n\n💡 建议：\n• 减慢发送消息的频率\n• 等待指定时间后重试\n• 如果经常遇到此问题，可能需要升级API计划`);
+
+            // 禁用发送按钮一段时间
+            sendBtn.disabled = true;
+            userInput.disabled = true;
+
+            let countdown = retrySeconds;
+            const countdownInterval = setInterval(() => {
+              sendBtn.textContent = `等待 ${countdown}s`;
+              countdown--;
+
+              if (countdown < 0) {
+                clearInterval(countdownInterval);
+                sendBtn.disabled = false;
+                userInput.disabled = false;
+                sendBtn.textContent = '发送';
+                userInput.focus();
+              }
+            }, 1000);
+
+            return;
+          }
+
+          throw new Error(`HTTP ${response.status}: ${errorData.error || 'Network response was not ok'}`);
         }
-        
+
         const data = await response.json();
         addAIMessage(data.response);
       } catch (error) {
         console.error('Error:', error);
-        addAIMessage('Sorry, I encountered an error. Please try again.');
+
+        // 移除可能残留的输入指示器
+        const remainingTyping = chatMessages.querySelector('.typing-indicator');
+        if (remainingTyping) {
+          chatMessages.removeChild(remainingTyping.closest('.message'));
+        }
+
+        addAIMessage(`❌ 抱歉，遇到了错误：${error.message}\n\n请稍后重试。如果问题持续存在，可能是API配额限制或网络问题。`);
       }
     }
   }
