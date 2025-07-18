@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chatroom - DeepSeek</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <h1>AI Chatroom</h1>
+      <div class="ai-info">
+        <span class="ai-name">DeepSeek AI</span>
+        <span class="status-indicator active">Online</span>
+      </div>
+    </div>
+    
+    <div id="chat-messages" class="chat-messages">
+      <div class="message ai-message">
+        <div class="avatar">🤖</div>
+        <div class="content">
+          <div class="text">Hello! I'm DeepSeek AI. How can I assist you today?</div>
+          <div class="timestamp">Just now</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="chat-input">
+      <input type="text" id="user-input" placeholder="Type your message here...">
+      <button id="send-btn">Send</button>
+    </div>
+    
+    <div class="footer">
+      <p>Node.js Chatroom with DeepSeek AI | Made with ❤️ for learning</p>
+    </div>
+  </div>
+  
+  <script src="script.js"></script>
+</body>
+</html>
