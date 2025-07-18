@@ -1,14 +1,14 @@
 :root {
-  --primary-color: #4361ee;
-  --secondary-color: #3f37c9;
-  --ai-color: #4cc9f0;
+  --primary-color: #f66189;
+  --secondary-color: #c23957;
+  --ai-color: #ac4cf0;
   --user-color: #f72585;
   --bg-color: #f8f9fa;
   --card-color: #ffffff;
   --text-color: #333333;
   --light-text: #6c757d;
   --border-color: #dee2e6;
-  --success-color: #4ade80;
+  --success-color: #8d4ade;
 }
 
 * {
@@ -173,7 +173,7 @@ body {
 
 .chat-input input:focus {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+  box-shadow: 0 0 0 3px rgba(238, 67, 175, 0.2);
 }
 
 .chat-input button {

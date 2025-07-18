@@ -1,100 +1,64 @@
 require('dotenv').config();
 const express = require('express');
-const { OpenAI } = require('openai');
-const cors = require('cors'); // 可选：如果需要跨域请求
+const cors = require('cors');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// 初始化 OpenAI 客户端
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// 使用 Gemini API Key（推荐写在 .env 文件中）
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// 中间件
-app.use(express.static('public')); // 提供静态文件
-app.use(express.json()); // 解析 JSON 请求体
-app.use(cors()); // 启用 CORS（可选）
+app.use(express.static('public'));
+app.use(express.json());
+app.use(cors());
 
-// 健康检查端点
+// 健康检查
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'healthy', timestamp: new Date() });
+  res.json({ 
+    status: 'running',
+    api: 'google-gemini',
+    model: 'gemini-pro' 
+  });
 });
 
-// 聊天端点
+// 聊天接口
 app.post('/api/chat', async (req, res) => {
-  // 验证请求体
   if (!req.body || !req.body.message) {
     return res.status(400).json({ error: 'Message is required' });
   }
 
   try {
-    const { message, chatHistory = [] } = req.body;
+    const userInput = req.body.message;
 
-    // 构建消息历史（包括系统消息）
-    const messages = [
-      { 
-        role: 'system', 
-        content: 'You are a helpful AI assistant. Respond in the same language as the user.'
-      },
-      ...chatHistory,
-      { role: 'user', content: message }
-    ];
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
-    // 调用 OpenAI API
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-      messages,
-      temperature: 0.7,
-      max_tokens: 1000,
-      top_p: 1,
-      frequency_penalty: 0,
-      presence_penalty: 0,
-    });
+    const chat = model.startChat({ history: [] }); // 也可以保留聊天历史用于上下文对话
+    const result = await chat.sendMessage(userInput);
+    const response = result.response.text();
 
-    // 获取 AI 回复
-    const aiResponse = completion.choices[0].message.content;
-
-    // 返回响应
-    res.json({ 
-      response: aiResponse,
-      usage: completion.usage,
-      model: completion.model,
-      id: completion.id
+    res.json({
+      response: response,
+      meta: {
+        model: 'gemini-pro',
+        api: 'google-gemini'
+      }
     });
 
   } catch (error) {
-    console.error('OpenAI API Error:', error);
-
-    // 更详细的错误处理
-    let statusCode = 500;
-    let errorMessage = 'Failed to get AI response';
-
-    if (error.response) {
-      statusCode = error.response.status;
-      errorMessage = error.response.data.error?.message || errorMessage;
-    }
-
-    res.status(statusCode).json({ 
-      error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    console.error('Gemini API Error:', error);
+    res.status(500).json({
+      error: 'Gemini API调用失败',
+      details: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        stack: error.stack
+      } : undefined,
+      tips: '请检查 API Key 是否正确或稍后重试'
     });
   }
 });
 
-// 404 处理
-app.use((req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
-});
-
-// 错误处理中间件
-app.use((err, req, res, next) => {
-  console.error('Server Error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
-
-// 启动服务器
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
-  console.log(`Using OpenAI model: ${process.env.OPENAI_MODEL || 'gpt-3.5-turbo'}`);
+  console.log('Using Google Gemini API');
 });
