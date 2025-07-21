@@ -2,62 +2,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const chatMessages = document.getElementById('chat-messages');
   const userInput = document.getElementById('user-input');
   const sendBtn = document.getElementById('send-btn');
-
-  // 配置 marked.js 选项
-  marked.setOptions({
-    breaks: true,        // 支持换行
-    gfm: true,          // 支持 GitHub Flavored Markdown
-    sanitize: false,    // 我们信任 AI 的输出，但会在用户输入时转义
-    smartLists: true,   // 智能列表
-    smartypants: true   // 智能标点符号
-  });
-
-  // 渲染欢迎消息
-  const welcomeMessage = `# 👋 欢迎使用 AI 聊天室！
-
-我是 **DeepSeek V3**，一个强大的 AI 助手。我可以帮助你：
-
-- 📝 回答各种问题
-- 💡 提供创意建议
-- 🔧 协助解决问题
-- 📚 解释复杂概念
-
-试试问我任何问题吧！`;
-
-// 现在我支持 **Markdown 格式**，可以更好地展示：
-// - \`代码\`
-// - **粗体** 和 *斜体*
-// - 列表和表格
-// - > 引用块
-
-  const welcomeElement = document.getElementById('welcome-message');
-  if (welcomeElement) {
-    welcomeElement.innerHTML = marked.parse(welcomeMessage);
-  }
   
-  // HTML 转义函数
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
   // 添加用户消息
   function addUserMessage(message) {
     const messageElement = document.createElement('div');
     messageElement.classList.add('message', 'user-message');
-
-    // 转义用户输入以防止 XSS
-    const escapedMessage = escapeHtml(message);
-
+    
     messageElement.innerHTML = `
+      <div class="avatar">👤</div>
       <div class="content">
-        <div class="text">${escapedMessage}</div>
+        <div class="text">${message}</div>
         <div class="timestamp">${getCurrentTime()}</div>
       </div>
-      <div class="avatar">👤</div>
     `;
-
+    
     chatMessages.appendChild(messageElement);
     scrollToBottom();
   }
@@ -66,18 +24,15 @@ document.addEventListener('DOMContentLoaded', () => {
   function addAIMessage(message) {
     const messageElement = document.createElement('div');
     messageElement.classList.add('message', 'ai-message');
-
-    // 使用 marked 渲染 Markdown
-    const renderedMessage = marked.parse(message);
-
+    
     messageElement.innerHTML = `
       <div class="avatar">🤖</div>
       <div class="content">
-        <div class="text">${renderedMessage}</div>
+        <div class="text">${message}</div>
         <div class="timestamp">${getCurrentTime()}</div>
       </div>
     `;
-
+    
     chatMessages.appendChild(messageElement);
     scrollToBottom();
   }
@@ -101,12 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // 添加用户消息
       addUserMessage(message);
       userInput.value = '';
-
-      // 禁用发送按钮和输入框
-      sendBtn.disabled = true;
-      //userInput.disabled = true;
-      sendBtn.textContent = 'Thinking...';
-
+      
       try {
         // 显示"正在输入"状态
         const typingIndicator = document.createElement('div');
@@ -115,8 +65,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="avatar">🤖</div>
           <div class="content">
             <div class="text typing-indicator">
-              I'm thinking<span class="dots">
-              <span>.</span><span>.</span><span>.</span></span>
+              <span></span>
+              <span></span>
+              <span></span>
             </div>
           </div>
         `;
@@ -134,11 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 移除"正在输入"状态
         chatMessages.removeChild(typingIndicator);
-
-        // 重新启用发送按钮和输入框
-        sendBtn.disabled = false;
-        //userInput.disabled = false;
-        sendBtn.textContent = '发送';
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -184,11 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (remainingTyping) {
           chatMessages.removeChild(remainingTyping.closest('.message'));
         }
-
-        // 重新启用发送按钮和输入框
-        sendBtn.disabled = false;
-        userInput.disabled = false;
-        sendBtn.textContent = '发送';
 
         addAIMessage(`❌ 抱歉，遇到了错误：${error.message}\n\n请稍后重试。如果问题持续存在，可能是API配额限制或网络问题。`);
       }

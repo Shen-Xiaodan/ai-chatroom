@@ -38,11 +38,13 @@ npm start
 ## 📋 功能特性
 
 - ✅ **DeepSeek V3 模型** - 使用最新的 DeepSeek V3 大语言模型
+- ✅ **Markdown 渲染** - AI 回复支持完整的 Markdown 格式
 - ✅ **实时聊天** - 流畅的聊天体验
 - ✅ **错误处理** - 智能的错误处理和重试机制
 - ✅ **频率限制** - 防止 API 滥用的请求限制
 - ✅ **状态监控** - 内置的系统状态检查页面
 - ✅ **响应式设计** - 适配各种设备屏幕
+- ✅ **安全性** - 用户输入转义，防止 XSS 攻击
 
 ## 🛠️ 技术栈
 
@@ -90,16 +92,32 @@ npm run dev
 ### 项目结构
 ```
 ai-chatroom/
-├── server.js          # 主服务器文件
-├── public/            # 前端静态文件
-│   ├── index.html     # 主页面
-│   ├── script.js      # 前端逻辑
-│   ├── styles.css     # 样式文件
-│   └── status.html    # 状态检查页面
-├── .env               # 环境变量配置
-├── .env.example       # 环境变量模板
-└── package.json       # 项目配置
+├── server.js              # 主服务器文件
+├── src/                   # 前端静态文件
+│   ├── index.html         # 主页面
+│   ├── script.js          # 前端逻辑（支持 Markdown）
+│   ├── styles.css         # 样式文件（包含 Markdown 样式）
+│   ├── status.html        # 状态检查页面
+│   └── markdown-test.html # Markdown 渲染测试页面
+├── .env                   # 环境变量配置
+├── .env.example           # 环境变量模板
+└── package.json           # 项目配置
 ```
+
+### Markdown 支持
+
+AI 回复现在完全支持 Markdown 格式，包括：
+
+- **文本格式**: 粗体、斜体、删除线
+- **标题**: H1-H6 各级标题
+- **列表**: 有序和无序列表，支持嵌套
+- **代码**: 行内代码和代码块，支持语法高亮
+- **引用**: 块引用
+- **链接**: 自动链接和命名链接
+- **表格**: 完整的表格支持
+- **分隔线**: 水平分隔线
+
+访问 `/markdown-test.html` 查看渲染效果示例。
 
 ## 📄 许可证
 

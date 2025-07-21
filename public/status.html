@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 状态检查 - AI 聊天室</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+       int  
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .status-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #ddd;
+        }
+        
+        .status-item.success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .status-item.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        
+        .status-item.warning {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+        
+        .status-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .status-detail {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        
+        .test-button:hover {
+            background: #0056b3;
+        }
+        
+        .test-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #007bff;
+            text-decoration: none;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 API 状态检查</h1>
+        
+        <div id="status-container">
+            <div class="status-item">
+                <div class="status-title">正在检查服务器状态...</div>
+                <div class="status-detail">请稍候</div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="test-button" onclick="checkStatus()">重新检查</button>
+            <button class="test-button" onclick="testAPI()">测试 API</button>
+        </div>
+        
+        <a href="/" class="back-link">← 返回聊天室</a>
+    </div>
+
+    <script>
+        async function checkStatus() {
+            const container = document.getElementById('status-container');
+            container.innerHTML = '<div class="status-item"><div class="status-title">正在检查...</div></div>';
+            
+            try {
+                // 检查健康状态
+                const healthResponse = await fetch('/health');
+                const healthData = await healthResponse.json();
+                
+                let statusHTML = '';
+                
+                if (healthResponse.ok) {
+                    statusHTML += `
+                        <div class="status-item success">
+                            <div class="status-title">✅ 服务器状态正常</div>
+                            <div class="status-detail">
+                                API: ${healthData.api}<br>
+                                模型: ${healthData.model}<br>
+                                状态: ${healthData.status}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    statusHTML += `
+                        <div class="status-item error">
+                            <div class="status-title">❌ 服务器状态异常</div>
+                            <div class="status-detail">HTTP ${healthResponse.status}</div>
+                        </div>
+                    `;
+                }
+                
+                // 检查环境变量
+                statusHTML += `
+                    <div class="status-item warning">
+                        <div class="status-title">⚠️ 环境配置</div>
+                        <div class="status-detail">
+                            请确保 .env 文件中包含有效的 SILICONFLOW_API_KEY<br>
+                            API 提供商: SiliconFlow<br>
+                            模型: deepseek-ai/DeepSeek-V3<br>
+                            如果遇到 429 错误，可能是：<br>
+                            • API 配额已用完<br>
+                            • 请求频率过高<br>
+                            • 需要升级到付费计划
+                        </div>
+                    </div>
+                `;
+                
+                container.innerHTML = statusHTML;
+                
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="status-item error">
+                        <div class="status-title">❌ 连接失败</div>
+                        <div class="status-detail">
+                            无法连接到服务器: ${error.message}<br>
+                            请确保服务器正在运行 (npm start)
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testAPI() {
+            const container = document.getElementById('status-container');
+            
+            try {
+                const testMessage = "Hello, this is a test message.";
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: testMessage })
+                });
+                
+                const data = await response.json();
+                
+                let resultHTML = '';
+                
+                if (response.ok) {
+                    resultHTML = `
+                        <div class="status-item success">
+                            <div class="status-title">✅ API 测试成功</div>
+                            <div class="status-detail">
+                                测试消息: "${testMessage}"<br>
+                                AI 回复: "${data.response.substring(0, 100)}..."<br>
+                                模型: ${data.meta.model}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultHTML = `
+                        <div class="status-item error">
+                            <div class="status-title">❌ API 测试失败</div>
+                            <div class="status-detail">
+                                错误: ${data.error || 'Unknown error'}<br>
+                                状态码: ${response.status}<br>
+                                ${data.message ? `消息: ${data.message}` : ''}
+                                ${data.retryAfter ? `重试时间: ${data.retryAfter}` : ''}
+                            </div>
+                            ${data.tips ? `<pre>${JSON.stringify(data.tips, null, 2)}</pre>` : ''}
+                        </div>
+                    `;
+                }
+                
+                container.innerHTML += resultHTML;
+                
+            } catch (error) {
+                container.innerHTML += `
+                    <div class="status-item error">
+                        <div class="status-title">❌ API 测试异常</div>
+                        <div class="status-detail">
+                            错误: ${error.message}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // 页面加载时自动检查状态
+        document.addEventListener('DOMContentLoaded', checkStatus);
+    </script>
+</body>
+</html>

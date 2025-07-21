@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown 渲染测试</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .test-message {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid var(--ai-color);
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: var(--ai-color);
+            text-decoration: none;
+            padding: 10px 20px;
+            border: 2px solid var(--ai-color);
+            border-radius: 5px;
+        }
+        .back-link:hover {
+            background: var(--ai-color);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <a href="/" class="back-link">← 返回聊天室</a>
+        
+        <h1>Markdown 渲染测试</h1>
+        <p>这个页面展示了 AI 消息中 Markdown 语法的渲染效果。</p>
+        
+        <div class="test-message">
+            <h3>测试消息（模拟 AI 回复）</h3>
+            <div class="message ai-message">
+                <div class="avatar">🤖</div>
+                <div class="content">
+                    <div class="text" id="markdown-content">
+                        <!-- Markdown 内容将在这里渲染 -->
+                    </div>
+                    <div class="timestamp">测试时间</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <h3>原始 Markdown 文本：</h3>
+            <pre id="raw-markdown" style="background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto;"></pre>
+        </div>
+    </div>
+
+    <script>
+        // 测试 Markdown 内容
+        const testMarkdown = `# 这是一个标题
+
+## 二级标题
+
+这是一段普通文本，包含 **粗体** 和 *斜体* 文字。
+
+### 列表示例
+
+#### 无序列表：
+- 第一项
+- 第二项
+  - 嵌套项目
+  - 另一个嵌套项目
+- 第三项
+
+#### 有序列表：
+1. 首先做这个
+2. 然后做那个
+3. 最后完成这个
+
+### 代码示例
+
+这是行内代码：\`console.log('Hello World')\`
+
+这是代码块：
+\`\`\`javascript
+function greet(name) {
+    return \`Hello, \${name}!\`;
+}
+
+console.log(greet('DeepSeek'));
+\`\`\`
+
+### 引用
+
+> 这是一个引用块
+> 可以包含多行内容
+> 
+> 甚至可以包含 **格式化** 文本
+
+### 链接和其他
+
+访问 [OpenAI](https://openai.com) 了解更多信息。
+
+---
+
+### 表格
+
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| 标题 | ✅ | 支持 H1-H6 |
+| 列表 | ✅ | 有序和无序 |
+| 代码 | ✅ | 行内和代码块 |
+| 引用 | ✅ | 块引用 |
+| 表格 | ✅ | 基本表格 |
+
+这就是 Markdown 渲染的效果！`;
+
+        // 配置 marked
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            sanitize: false,
+            smartLists: true,
+            smartypants: true
+        });
+
+        // 渲染 Markdown
+        document.getElementById('markdown-content').innerHTML = marked.parse(testMarkdown);
+        document.getElementById('raw-markdown').textContent = testMarkdown;
+    </script>
+</body>
+</html>
