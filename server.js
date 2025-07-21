@@ -120,16 +120,43 @@ app.post('/api/chat', rateLimitMiddleware, async (req, res) => {
 
   try {
     const userInput = req.body.message;
+    const conversationHistory = req.body.history || []; // 接收会话历史
+
+    // 构建消息数组，包含会话历史
+    const messages = [];
+
+    // 添加系统提示（可选）
+    messages.push({
+      role: 'system',
+      content: '你是一个有用的AI助手。请用中文回答问题，并尽可能提供详细和准确的信息。'
+    });
+
+    // 添加会话历史（最多保留最近10轮对话以控制token使用）
+    const recentHistory = conversationHistory.slice(-20); // 最近20条消息（10轮对话）
+    recentHistory.forEach(msg => {
+      if (msg.type === 'user') {
+        messages.push({
+          role: 'user',
+          content: msg.content
+        });
+      } else if (msg.type === 'ai') {
+        messages.push({
+          role: 'assistant',
+          content: msg.content
+        });
+      }
+    });
+
+    // 添加当前用户输入
+    messages.push({
+      role: 'user',
+      content: userInput
+    });
 
     const result = await retryWithBackoff(async () => {
       return await openai.chat.completions.create({
         model: 'deepseek-ai/DeepSeek-V3',
-        messages: [
-          {
-            role: 'user',
-            content: userInput
-          }
-        ],
+        messages: messages,
         temperature: 0.7,
         max_tokens: 2048,
         stream: false
@@ -143,7 +170,8 @@ app.post('/api/chat', rateLimitMiddleware, async (req, res) => {
       meta: {
         model: 'deepseek-ai/DeepSeek-V3',
         api: 'siliconflow',
-        usage: result.usage
+        usage: result.usage,
+        messageCount: messages.length
       }
     });
 

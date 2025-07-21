@@ -10,39 +10,53 @@
 </head>
 <body>
   <div class="chat-container">
-    <div class="chat-header">
-      <h1>AI Chatroom</h1>
-      <div class="ai-info">
-        <span class="ai-name">DeepSeek V3</span>
-        <span class="status-indicator active">Online</span>
+    <!-- 对话主题侧边栏 -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h3>💬 历史对话</h3>
+        <button class="new-session-btn" id="new-session-btn" title="新建对话">+</button>
+      </div>
+      <div class="session-list" id="session-list">
+        <!-- 会话列表将在这里动态生成 -->
       </div>
     </div>
-    
-    <div id="chat-messages" class="chat-messages">
-      <div class="message ai-message">
-        <div class="avatar">🤖</div>
-        <div class="content">
-          <div class="text" id="welcome-message">
-            <!-- 欢迎消息将通过 JavaScript 渲染 -->
-          </div>
-          <div class="timestamp">Just now</div>
+
+    <!-- 主聊天区域 -->
+    <div class="main-chat">
+      <div class="chat-header">
+        <h1>🤖 AI Chatroom</h1>
+        <div class="ai-info">
+          <span class="ai-name">DeepSeek V3</span>
         </div>
       </div>
-    </div>
-    
-    <div class="chat-input">
-      <input type="text" id="user-input" placeholder="Type your message here...">
-      <button id="send-btn">Send</button>
-    </div>
-    
-    <div class="footer">
-      <p>Chatroom with AI
-        <a href="/markdown-test.html" style="color: var(--ai-color);">Markdown 测试</a> |
-        <a href="/status.html" style="color: var(--ai-color);">系统状态</a>
-      </p>
+
+      <div id="chat-messages" class="chat-messages">
+        <div class="message ai-message">
+          <div class="avatar">🤖</div>
+          <div class="content">
+            <div class="text" id="welcome-message">
+              <!-- 欢迎消息将通过 JavaScript 渲染 -->
+            </div>
+            <div class="timestamp">Just now</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-input">
+        <textarea id="user-input" placeholder="Type your message here..." rows="1"></textarea>
+        <button id="send-btn">Send</button>
+      </div>
+
+      <div class="footer">
+        <p>Chatroom with AI
+          <a href="/markdown-test.html" style="color: var(--ai-color);">Markdown 测试</a> |
+          <a href="/status.html" style="color: var(--ai-color);">系统状态</a>
+        </p>
+      </div>
     </div>
   </div>
-  
+
+  <script src="session-manager.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
