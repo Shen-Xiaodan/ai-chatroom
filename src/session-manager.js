@@ -122,6 +122,21 @@ class SessionManager {
   }
 
   /**
+   * 移除当前会话的最后一条消息
+   */
+  removeLastMessage() {
+    const session = this.getCurrentSession();
+    if (!session || session.messages.length === 0) return null;
+
+    const removedMessage = session.messages.pop();
+    session.messageCount = session.messages.length;
+    session.updatedAt = new Date().toISOString();
+
+    this.saveToStorage();
+    return removedMessage;
+  }
+
+  /**
    * 根据消息内容生成标题
    */
   generateTitleFromMessage(content) {
