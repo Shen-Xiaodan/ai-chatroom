@@ -1,5 +1,5 @@
 /**
- * 配置管理器 - 负责管理 API 配置的存储、加载和验证
+ * 配置管理器 - 负责管理 API 配置的存储、加载和验证（纯前端版本）
  */
 class ConfigManager {
   constructor() {
@@ -13,7 +13,7 @@ class ConfigManager {
       temperature: 0.7,
       isConfigured: false
     };
-    
+
     this.config = { ...this.defaultConfig };
     this.loadFromStorage();
   }
@@ -57,16 +57,10 @@ class ConfigManager {
    * 更新配置
    */
   updateConfig(newConfig) {
-    // 验证必要字段
-    if (!newConfig.apiKey || !newConfig.baseURL || !newConfig.model) {
-      throw new Error('API Key、Base URL 和模型名称都是必填项');
-    }
-
-    // 验证 URL 格式
-    try {
-      new URL(newConfig.baseURL);
-    } catch (error) {
-      throw new Error('Base URL 格式不正确');
+    // 验证配置
+    const validation = this.validateConfig(newConfig);
+    if (!validation.isValid) {
+      throw new Error('配置验证失败: ' + validation.errors.join(', '));
     }
 
     // 更新配置
@@ -212,6 +206,67 @@ class ConfigManager {
       return this.config;
     } catch (error) {
       throw new Error('配置导入失败: ' + error.message);
+    }
+  }
+
+  /**
+   * 测试API连接（前端版本）
+   */
+  async testConnection(testConfig = this.config) {
+    try {
+      // 验证配置
+      const validation = this.validateConfig(testConfig);
+      if (!validation.isValid) {
+        return {
+          success: false,
+          message: '配置验证失败: ' + validation.errors.join(', ')
+        };
+      }
+
+      // 发送测试请求
+      const response = await fetch(testConfig.baseURL + '/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${testConfig.apiKey}`
+        },
+        body: JSON.stringify({
+          model: testConfig.model,
+          messages: [
+            {
+              role: 'user',
+              content: 'Hello, this is a test message.'
+            }
+          ],
+          max_tokens: 10,
+          temperature: 0.1
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          success: false,
+          message: `API调用失败 (${response.status}): ${errorData.error?.message || errorData.message || 'Unknown error'}`
+        };
+      }
+
+      const data = await response.json();
+
+      return {
+        success: true,
+        message: 'API连接测试成功！',
+        data: {
+          model: data.model,
+          usage: data.usage
+        }
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: `连接测试失败: ${error.message}`
+      };
     }
   }
 }

@@ -1,188 +1,162 @@
-# AI Chatroom - DeepSeek V3
+# AI Chatroom - 纯前端版
 
-一个基于 Node.js 和 SiliconFlow API 的 AI 聊天室，使用 DeepSeek V3 模型。
+一个完全基于前端的 AI 聊天室应用，无需后端服务器，可直接作为静态文件部署。
 
-## 🌐 在线演示
+## ✨ 特性
 
-**GitHub Pages 部署**: [https://yourusername.github.io/ai-chatroom](https://yourusername.github.io/ai-chatroom)
+- 🔒 **隐私保护**: 所有配置和聊天记录仅存储在本地浏览器中
+- 🌐 **纯前端**: 无需后端服务器，可直接部署到任何静态文件托管服务
+- 🔑 **API 兼容**: 支持 OpenAI 兼容的 API（如 SiliconFlow、OpenAI 等）
+- 💬 **会话管理**: 支持多个聊天会话，自动保存聊天历史
+- 📝 **Markdown 支持**: 完整的 Markdown 渲染支持
+- 🎨 **现代界面**: 响应式设计，支持移动设备
+- ⚡ **即开即用**: 无需安装，直接在浏览器中使用
 
-> 注意：GitHub Pages 版本是静态演示版本，不包含后端 API 功能。完整功能请参考本地部署说明。
+## 🚀 在线演示
 
-## 🚀 快速开始
+**GitHub Pages**: [https://shen-xiaodan.github.io/ai-chatroom/](https://shen-xiaodan.github.io/ai-chatroom/)
 
-### 方式一：在线体验（GitHub Pages）
-直接访问 [GitHub Pages 演示](https://yourusername.github.io/ai-chatroom) 体验静态版本。
+## 🎯 快速开始
 
-### 方式二：本地部署（完整功能）
+### 方式一：在线使用
+直接访问 [GitHub Pages 演示](https://shen-xiaodan.github.io/ai-chatroom/) 即可使用。
 
-#### 1. 安装依赖
-```bash
-npm install
+### 方式二：本地使用
+1. 下载或克隆此仓库
+2. 用浏览器打开 `src/index.html` 文件
+3. 配置您的 API 信息即可开始使用
+
+### 方式三：部署到其他平台
+将 `src` 目录下的所有文件上传到任何静态文件托管服务：
+- Netlify
+- Vercel
+- 或任何支持静态文件的服务器
+
+## 📖 使用说明
+
+### 1. 配置 API
+首次使用时，需要配置 API 信息：
+1. 点击右上角的 ⚙️ 设置按钮
+2. 选择 API 提供商（推荐 SiliconFlow）
+3. 输入您的 API Key
+4. 选择模型名称
+5. 点击"测试连接"验证配置
+6. 保存配置
+
+### 2. 获取 API Key
+
+#### SiliconFlow（推荐）
+- 访问 [SiliconFlow](https://siliconflow.cn/)
+- 注册账号并获取免费 API Key
+- 支持多种开源模型，价格便宜
+
+#### OpenAI
+- 访问 [OpenAI Platform](https://platform.openai.com/)
+- 创建 API Key
+- 支持 GPT-4、GPT-3.5 等模型
+
+### 3. 开始聊天
+配置完成后，您就可以：
+- 发送消息与 AI 对话
+- 创建多个会话
+- 查看聊天历史
+- 编辑和重新生成消息
+
+## 📁 项目结构
+
+```
+src/
+├── index.html          # 主页面
+├── script.js           # 主要逻辑
+├── config-manager.js   # 配置管理
+├── session-manager.js  # 会话管理
+├── styles.css          # 样式文件
+├── markdown-test.html  # Markdown 测试页面
+├── test.html           # 功能测试页面
+├── README.md           # 使用说明
+├── DEPLOYMENT.md       # 部署指南
+└── example-config.json # 配置示例
 ```
 
-#### 2. 配置 API Key
+## 🔒 隐私保护
 
-##### 获取 SiliconFlow API Key
-1. 访问 [SiliconFlow 官网](https://siliconflow.cn/)
-2. 注册并登录账户
-3. 在控制台创建新的 API Key
+- ✅ 所有数据仅存储在您的浏览器本地
+- ✅ API Key 安全存储在 localStorage 中
+- ✅ 聊天记录不会上传到任何服务器
+- ✅ 完全离线的配置管理
+- ✅ 无需注册账号
 
-##### 配置环境变量
-1. 复制 `.env.example` 为 `.env`：
-   ```bash
-   cp .env.example .env
-   ```
+## 🌐 浏览器兼容性
 
-2. 编辑 `.env` 文件，将 `your_siliconflow_api_key_here` 替换为你的实际 API Key：
-   ```
-   SILICONFLOW_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-   ```
-
-#### 3. 启动服务器
-```bash
-npm start
-```
-
-#### 4. 访问应用
-打开浏览器访问：`http://localhost:3000`
-
-## 📋 功能特性
-
-- ✅ **DeepSeek V3 模型** - 使用最新的 DeepSeek V3 大语言模型
-- ✅ **Markdown 渲染** - AI 回复支持完整的 Markdown 格式
-- ✅ **实时聊天** - 流畅的聊天体验
-- ✅ **错误处理** - 智能的错误处理和重试机制
-- ✅ **频率限制** - 防止 API 滥用的请求限制
-- ✅ **状态监控** - 内置的系统状态检查页面
-- ✅ **响应式设计** - 适配各种设备屏幕
-- ✅ **安全性** - 用户输入转义，防止 XSS 攻击
+支持所有现代浏览器：
+- Chrome 60+
+- Firefox 55+
+- Safari 12+
+- Edge 79+
 
 ## 🛠️ 技术栈
 
-- **后端**: Node.js + Express
-- **AI API**: SiliconFlow (OpenAI 兼容)
-- **模型**: deepseek-ai/DeepSeek-V3
-- **前端**: 原生 HTML/CSS/JavaScript
+- 纯 HTML/CSS/JavaScript
+- Marked.js (Markdown 渲染)
+- 本地存储 (localStorage)
+- Fetch API (HTTP 请求)
 
-## 📊 API 信息
+## 🚀 部署到 GitHub Pages
 
-- **提供商**: SiliconFlow
-- **API 端点**: `https://api.siliconflow.cn/v1`
-- **模型**: `deepseek-ai/DeepSeek-V3`
-- **兼容性**: OpenAI API 格式
+### 自动部署（推荐）
+1. Fork 此仓库到您的 GitHub 账号
+2. 在仓库设置中启用 GitHub Pages
+3. 选择 GitHub Actions 作为源
+4. 推送代码后会自动部署
 
-## 🔧 故障排除
+### 手动部署
+1. 将 `src` 目录下的文件复制到 `gh-pages` 分支
+2. 在仓库设置中启用 GitHub Pages
+3. 选择 `gh-pages` 分支作为源
+
+详细部署指南请查看 [src/DEPLOYMENT.md](src/DEPLOYMENT.md)
+
+## ❓ 故障排除
 
 ### 常见问题
 
-1. **API Key 错误**
-   - 确保 `.env` 文件中的 `SILICONFLOW_API_KEY` 正确
-   - 检查 API Key 是否有效且未过期
+**无法连接 API**
+- 检查 API Key 是否正确
+- 确认 Base URL 格式正确
+- 检查网络连接
 
-2. **429 错误（请求过于频繁）**
-   - 等待指定时间后重试
-   - 减慢发送消息的频率
-   - 考虑升级 API 计划
+**CORS 错误**
+- 使用支持跨域的 API 服务（如 SiliconFlow）
+- 避免使用不支持 CORS 的 API
 
-3. **服务器启动失败**
-   - 检查端口 3000 是否被占用
-   - 确保所有依赖已正确安装
+**配置丢失**
+- 配置存储在浏览器 localStorage 中
+- 清除浏览器数据会导致配置丢失
+- 建议定期备份配置
 
-### 状态检查
-访问 `http://localhost:3000/status.html` 查看系统状态和进行 API 测试。
-
-详细的故障排除指南请查看 [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
-
-## 📝 开发
-
-### 开发模式
-```bash
-npm run dev
-```
-
-### 项目结构
-```
-ai-chatroom/
-├── server.js              # 主服务器文件
-├── src/                   # 前端静态文件
-│   ├── index.html         # 主页面
-│   ├── script.js          # 前端逻辑（支持 Markdown）
-│   ├── styles.css         # 样式文件（包含 Markdown 样式）
-│   ├── status.html        # 状态检查页面
-│   └── markdown-test.html # Markdown 渲染测试页面
-├── .env                   # 环境变量配置
-├── .env.example           # 环境变量模板
-└── package.json           # 项目配置
-```
-
-### Markdown 支持
-
-AI 回复现在完全支持 Markdown 格式，包括：
-
-- **文本格式**: 粗体、斜体、删除线
-- **标题**: H1-H6 各级标题
-- **列表**: 有序和无序列表，支持嵌套
-- **代码**: 行内代码和代码块，支持语法高亮
-- **引用**: 块引用
-- **链接**: 自动链接和命名链接
-- **表格**: 完整的表格支持
-- **分隔线**: 水平分隔线
-
-访问 `/markdown-test.html` 查看渲染效果示例。
-
-## 🌐 GitHub Pages 部署
-
-### 自动部署（推荐）
-
-本项目已配置 GitHub Actions 自动部署到 GitHub Pages。每次推送到 `main` 分支时会自动部署。
-
-### 手动配置 GitHub Pages
-
-如果需要手动配置 GitHub Pages：
-
-1. **Fork 或克隆项目到你的 GitHub 账户**
-
-2. **进入仓库设置**
-   - 在 GitHub 仓库页面，点击 `Settings` 标签
-   - 在左侧菜单中找到 `Pages` 选项
-
-3. **配置 Pages 设置**
-   - **Source**: 选择 `Deploy from a branch`
-   - **Branch**: 选择 `main` 分支
-   - **Folder**: 选择 `/ (root)` 或 `/public` （如果你想只部署 public 文件夹）
-
-4. **等待部署完成**
-   - GitHub 会自动构建和部署你的网站
-   - 部署完成后，你会看到网站的 URL：`https://yourusername.github.io/ai-chatroom`
-
-5. **更新 README 中的链接**
-   - 将 README 中的 `yourusername` 替换为你的实际 GitHub 用户名
-
-### 部署注意事项
-
-- **静态版本限制**: GitHub Pages 只能托管静态文件，不支持 Node.js 后端
-- **API 功能**: 在线演示版本无法连接到 SiliconFlow API，仅展示界面
-- **完整功能**: 要体验完整的 AI 聊天功能，请按照本地部署说明运行
-
-### 自定义域名（可选）
-
-如果你有自己的域名：
-
-1. 在仓库根目录创建 `CNAME` 文件
-2. 在文件中写入你的域名（如：`chatroom.yourdomain.com`）
-3. 在域名提供商处配置 DNS 记录指向 GitHub Pages
-
-## 📄 许可证
-
-MIT License
+更多问题请查看 [故障排除指南](src/README.md#故障排除)
 
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
 
-## 📞 支持
+## 📄 许可证
 
-如果遇到问题，请：
-1. 查看 [故障排除指南](./TROUBLESHOOTING.md)
-2. 检查 [SiliconFlow 文档](https://docs.siliconflow.cn/)
-3. 提交 Issue
+MIT License
+
+## 🔄 更新日志
+
+### v2.0.0 (纯前端版)
+- ✨ 重构为纯前端应用
+- 🔒 增强隐私保护
+- 🚀 支持静态部署
+- 📱 优化移动端体验
+
+### v1.0.0 (原版)
+- 🎉 初始版本
+- 💬 基本聊天功能
+- 🔧 后端 API 代理
+
+---
+
+**开始使用**: [在线演示](https://shen-xiaodan.github.io/ai-chatroom/) | [下载源码](https://github.com/Shen-Xiaodan/ai-chatroom/archive/main.zip)
