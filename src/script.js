@@ -1070,6 +1070,22 @@ document.addEventListener('DOMContentLoaded', () => {
       maxTokensInput.value = config.maxTokens || 2048;
       temperatureInput.value = config.temperature || 0.7;
 
+      // 处理 API Key 显示
+      if (config.hasApiKey) {
+        // 如果有 API Key，显示占位符，但保留本地存储的值
+        const localConfig = configManager.getConfig();
+        if (localConfig.apiKey) {
+          apiKeyInput.value = localConfig.apiKey;
+        } else {
+          // 如果本地没有，显示占位符提示用户重新输入
+          apiKeyInput.placeholder = '已配置 API Key，如需修改请重新输入';
+          apiKeyInput.value = '';
+        }
+      } else {
+        apiKeyInput.value = '';
+        apiKeyInput.placeholder = '请输入您的 API Key';
+      }
+
       // 触发提供商变更以加载模型列表
       onApiProviderChange();
 
@@ -1151,6 +1167,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // 立即显示测试中状态
+    showConfigStatusMessage('正在测试 API 连接...', 'info');
+
     testConfigBtn.disabled = true;
     testConfigBtn.textContent = '测试中...';
 
@@ -1166,9 +1185,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await response.json();
 
       if (result.success) {
-        showConfigStatusMessage('API 连接测试成功！', 'success');
+        showConfigStatusMessage('API 连接测试成功！配置有效，可以正常使用。', 'success');
       } else {
-        showConfigStatusMessage(`API 连接测试失败: ${result.message}`, 'error');
+        showConfigStatusMessage(`API 连接测试失败: ${result.message || result.error}`, 'error');
       }
     } catch (error) {
       showConfigStatusMessage(`测试失败: ${error.message}`, 'error');
@@ -1253,9 +1272,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 从表单获取配置
   function getFormConfig() {
+    let apiKey = apiKeyInput.value.trim();
+
+    // 如果 API Key 为空，但本地有保存的 API Key，使用本地的
+    if (!apiKey) {
+      const localConfig = configManager.getConfig();
+      if (localConfig.apiKey) {
+        apiKey = localConfig.apiKey;
+      }
+    }
+
     return {
       apiProvider: apiProviderSelect.value,
-      apiKey: apiKeyInput.value.trim(),
+      apiKey: apiKey,
       baseURL: baseUrlInput.value.trim(),
       model: modelNameSelect.value === 'custom' ? customModelInput.value.trim() : modelNameSelect.value,
       maxTokens: parseInt(maxTokensInput.value) || 2048,
@@ -1287,11 +1316,19 @@ document.addEventListener('DOMContentLoaded', () => {
     configStatusMessage.textContent = message;
     configStatusMessage.className = `config-status-message ${type}`;
 
-    // 自动隐藏成功消息
-    if (type === 'success') {
+    // 滚动到状态消息位置，确保用户能看到
+    setTimeout(() => {
+      configStatusMessage.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }, 100);
+
+    // 自动隐藏成功和信息消息
+    if (type === 'success' || type === 'info') {
       setTimeout(() => {
         configStatusMessage.className = 'config-status-message';
-      }, 3000);
+      }, type === 'success' ? 5000 : 4000);
     }
   }
 });
