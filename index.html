@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Chatroom - DeepSeek V3</title>
+  <title>AI Chatroom - 纯前端版</title>
   <link rel="stylesheet" href="styles.css">
   <!-- Marked.js for Markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -24,7 +24,7 @@
     <!-- 主聊天区域 -->
     <div class="main-chat">
       <div class="chat-header">
-        <h1>🤖 AI Chatroom</h1>
+        <h1>🤖 AI Chatroom <small style="font-size: 0.6em; color: #666;">(纯前端版)</small></h1>
         <div class="header-actions">
           <div class="ai-info">
             <span class="ai-name" id="ai-name">DeepSeek V3</span>
@@ -52,10 +52,9 @@
       </div>
 
       <div class="footer">
-        <p>AI Chatroom - Static Version
-          <a href="markdown-test.html" style="color: var(--ai-color);">Markdown 测试</a> |
-          <a href="status.html" style="color: var(--ai-color);">系统状态</a> |
-          <a href="https://github.com/your-username/ai-chatroom" style="color: var(--ai-color);" target="_blank">GitHub</a>
+        <p>AI Chatroom - 纯前端版 |
+          <a href="/markdown-test.html" style="color: var(--ai-color);">Markdown 测试</a> |
+          <span style="color: var(--help-text-color); font-size: 0.9em;">数据仅存储在本地浏览器</span>
         </p>
       </div>
     </div>
@@ -82,8 +81,9 @@
 
           <div class="form-group">
             <label for="api-key">API Key: <span class="required">*</span></label>
-            <input type="password" id="api-key" placeholder="请输入您的 API Key" required>
+            <input type="password" id="api-key" placeholder="请输入您的 API Key（仅存储在本地浏览器）" required>
             <button type="button" class="toggle-password" id="toggle-api-key">👁️</button>
+            <small class="form-help">您的 API Key 将安全地存储在浏览器本地，不会上传到任何服务器</small>
           </div>
 
           <div class="form-group">
@@ -130,14 +130,14 @@
 
       <div class="modal-body">
         <div class="welcome-message">
-          <p>欢迎使用 AI Chatroom！在开始聊天之前，请先配置您的 API 信息。</p>
-          <p>您需要提供：</p>
+          <p>欢迎使用 AI Chatroom！这是一个纯前端的 AI 聊天应用，您的 API Key 将安全地存储在本地浏览器中。</p>
+          <p>在开始聊天之前，请先配置您的 API 信息：</p>
           <ul>
-            <li>API Key（从您的 AI 服务提供商获取）</li>
-            <li>API Base URL（通常已预设）</li>
-            <li>模型名称（可从列表中选择）</li>
+            <li><strong>API Key</strong>（必填）- 从您的 AI 服务提供商获取</li>
+            <li><strong>API Base URL</strong>（已预设）- 支持 OpenAI 兼容的 API</li>
+            <li><strong>模型名称</strong>（可选择）- 从预设列表中选择或自定义</li>
           </ul>
-          <p>配置完成后，您就可以开始与 AI 对话了！</p>
+          <p><strong>隐私保护：</strong>所有配置信息仅存储在您的浏览器本地，不会上传到任何服务器。</p>
         </div>
 
         <div class="form-actions">
