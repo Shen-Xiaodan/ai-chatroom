@@ -1,13 +1,13 @@
 :root {
-  --primary-color: #b189f7;
-  --secondary-color: #7b47b2;
+  --primary-color: #a48ccd;
+  --secondary-color: #5661ac;
   --ai-color: #7dabf6bc;
   --user-color: #f7809cdd;
   --bg-color: #cbcaf7;
   --card-color: #c3cafb;
   --text-color: #333333;
   --light-text: #6c757d;
-  --border-color: #e8c9f3;
+  --border-color: #d9c9f3;
   --success-color: #f158a7;
   --help-text-color: #6c757d;
 }
@@ -319,20 +319,20 @@ body {
 }
 
 .copy-btn:hover {
-  background: #bfa1f7;
-  border-color: #bd92fa;
+  background: #d2e0f3;
+  border-color: #d2e0f3;
   transform: scale(1.1);
 }
 
 .regenerate-btn:hover {
-  background: #f67cd5;
-  border-color: #f478c5;
+  background: #9aaedf;
+  border-color: #9aaedf;
   transform: scale(1.1);
 }
 
 .edit-btn:hover {
-  background: #ffc107;
-  border-color: #ffc107;
+  background: #b7caea;
+  border-color: #b7caea;
   transform: scale(1.1);
 }
 
@@ -952,16 +952,16 @@ body {
 
 .btn-primary:hover {
   background-color: var(--secondary-color);
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 .btn-test {
-  background-color: #ee6083;
+  background-color: #b7caea;
   color: white;
 }
 
 .btn-test:hover {
-  background-color: #96133a;
+  background-color: #97a7c2;
   transform: scale(1.1);
 }
 
@@ -990,12 +990,12 @@ body {
 }
 
 .btn-reset {
-  background-color: #e9a051;
+  background-color: #9aaedf;
   color: white;
 }
 
 .btn-reset:hover {
-  background-color: #af8239;
+  background-color: #8697c2;
   transform: scale(1.1);
 }
 
@@ -1028,7 +1028,7 @@ body {
 .config-status-message.success {
   background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
   color: #155724;
-  border: 2px solid #28a745;
+  border: 2px solid #3bb557;
   display: block;
 }
 
