@@ -2,21 +2,32 @@
 
 一个基于 Node.js 和 SiliconFlow API 的 AI 聊天室，使用 DeepSeek V3 模型。
 
+## 🌐 在线演示
+
+**GitHub Pages 部署**: [https://yourusername.github.io/ai-chatroom](https://yourusername.github.io/ai-chatroom)
+
+> 注意：GitHub Pages 版本是静态演示版本，不包含后端 API 功能。完整功能请参考本地部署说明。
+
 ## 🚀 快速开始
 
-### 1. 安装依赖
+### 方式一：在线体验（GitHub Pages）
+直接访问 [GitHub Pages 演示](https://yourusername.github.io/ai-chatroom) 体验静态版本。
+
+### 方式二：本地部署（完整功能）
+
+#### 1. 安装依赖
 ```bash
 npm install
 ```
 
-### 2. 配置 API Key
+#### 2. 配置 API Key
 
-#### 获取 SiliconFlow API Key
+##### 获取 SiliconFlow API Key
 1. 访问 [SiliconFlow 官网](https://siliconflow.cn/)
 2. 注册并登录账户
 3. 在控制台创建新的 API Key
 
-#### 配置环境变量
+##### 配置环境变量
 1. 复制 `.env.example` 为 `.env`：
    ```bash
    cp .env.example .env
@@ -27,12 +38,12 @@ npm install
    SILICONFLOW_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    ```
 
-### 3. 启动服务器
+#### 3. 启动服务器
 ```bash
 npm start
 ```
 
-### 4. 访问应用
+#### 4. 访问应用
 打开浏览器访问：`http://localhost:3000`
 
 ## 📋 功能特性
@@ -118,6 +129,48 @@ AI 回复现在完全支持 Markdown 格式，包括：
 - **分隔线**: 水平分隔线
 
 访问 `/markdown-test.html` 查看渲染效果示例。
+
+## 🌐 GitHub Pages 部署
+
+### 自动部署（推荐）
+
+本项目已配置 GitHub Actions 自动部署到 GitHub Pages。每次推送到 `main` 分支时会自动部署。
+
+### 手动配置 GitHub Pages
+
+如果需要手动配置 GitHub Pages：
+
+1. **Fork 或克隆项目到你的 GitHub 账户**
+
+2. **进入仓库设置**
+   - 在 GitHub 仓库页面，点击 `Settings` 标签
+   - 在左侧菜单中找到 `Pages` 选项
+
+3. **配置 Pages 设置**
+   - **Source**: 选择 `Deploy from a branch`
+   - **Branch**: 选择 `main` 分支
+   - **Folder**: 选择 `/ (root)` 或 `/public` （如果你想只部署 public 文件夹）
+
+4. **等待部署完成**
+   - GitHub 会自动构建和部署你的网站
+   - 部署完成后，你会看到网站的 URL：`https://yourusername.github.io/ai-chatroom`
+
+5. **更新 README 中的链接**
+   - 将 README 中的 `yourusername` 替换为你的实际 GitHub 用户名
+
+### 部署注意事项
+
+- **静态版本限制**: GitHub Pages 只能托管静态文件，不支持 Node.js 后端
+- **API 功能**: 在线演示版本无法连接到 SiliconFlow API，仅展示界面
+- **完整功能**: 要体验完整的 AI 聊天功能，请按照本地部署说明运行
+
+### 自定义域名（可选）
+
+如果你有自己的域名：
+
+1. 在仓库根目录创建 `CNAME` 文件
+2. 在文件中写入你的域名（如：`chatroom.yourdomain.com`）
+3. 在域名提供商处配置 DNS 记录指向 GitHub Pages
 
 ## 📄 许可证
 
