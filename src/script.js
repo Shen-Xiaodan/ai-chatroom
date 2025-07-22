@@ -5,6 +5,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const sessionList = document.getElementById('session-list');
   const newSessionBtn = document.getElementById('new-session-btn');
 
+  // 配置相关元素
+  const settingsBtn = document.getElementById('settings-btn');
+  const configModal = document.getElementById('config-modal');
+  const welcomeConfigModal = document.getElementById('welcome-config-modal');
+  const closeConfigModal = document.getElementById('close-config-modal');
+  const startConfigBtn = document.getElementById('start-config');
+  const configStatusElement = document.getElementById('config-status');
+  const aiNameElement = document.getElementById('ai-name');
+
+  // 配置表单元素
+  const apiProviderSelect = document.getElementById('api-provider');
+  const apiKeyInput = document.getElementById('api-key');
+  const baseUrlInput = document.getElementById('base-url');
+  const modelNameSelect = document.getElementById('model-name');
+  const customModelInput = document.getElementById('custom-model');
+  const maxTokensInput = document.getElementById('max-tokens');
+  const temperatureInput = document.getElementById('temperature');
+  const toggleApiKeyBtn = document.getElementById('toggle-api-key');
+  const testConfigBtn = document.getElementById('test-config');
+  const resetConfigBtn = document.getElementById('reset-config');
+  const saveConfigBtn = document.getElementById('save-config');
+  const configStatusMessage = document.getElementById('config-status-message');
+
   // 配置 marked.js 选项
   marked.setOptions({
     breaks: true,        // 支持换行
@@ -15,10 +38,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // 渲染欢迎消息
-  function renderWelcomeMessage() {
-    const welcomeMessage = `# 👋 欢迎使用 AI 聊天室！
+  function renderWelcomeMessage(isConfigured = false, modelName = 'AI Assistant') {
+    let welcomeMessage;
 
-我是 **DeepSeek V3**，一个强大的 AI 助手。我可以帮助你：
+    if (isConfigured) {
+      welcomeMessage = `# 👋 欢迎使用 AI 聊天室！
+
+我是 **${modelName}**，一个强大的 AI 助手。我可以帮助你：
 
 - 📝 回答各种问题
 - 💡 提供创意建议
@@ -26,6 +52,19 @@ document.addEventListener('DOMContentLoaded', () => {
 - 📚 解释复杂概念
 
 试试问我任何问题吧！`;
+    } else {
+      welcomeMessage = `# 👋 欢迎使用 AI 聊天室！
+
+⚠️ **系统未配置**
+
+在开始对话之前，请先配置您的 API 信息：
+
+- 🔑 API Key（从您的 AI 服务提供商获取）
+- 🌐 API Base URL（通常已预设）
+- 🤖 模型名称（可从列表中选择）
+
+点击右上角的 ⚙️ 按钮开始配置，或者发送任意消息我会引导您进行配置。`;
+    }
 
     const welcomeElement = document.getElementById('welcome-message');
     if (welcomeElement) {
@@ -33,8 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 初始渲染欢迎消息
-  renderWelcomeMessage();
+  // 初始化配置管理（会在配置加载后更新欢迎消息）
+  initializeConfig();
   
   // HTML 转义函数
   function escapeHtml(text) {
@@ -125,8 +164,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // 发送消息到服务器
   async function sendMessage() {
     const message = userInput.value.trim();
-    
+
     if (message) {
+      // 检查配置状态
+      if (!configManager.isConfigured()) {
+        addAIMessage('⚠️ 系统未配置，请先配置 API 信息才能开始对话。');
+        showConfigModal();
+        return;
+      }
+
       // 添加用户消息
       addUserMessage(message);
       userInput.value = '';
@@ -182,6 +228,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
+
+          if (response.status === 400 && errorData.needsConfig) {
+            // 处理配置错误
+            addAIMessage('⚠️ 系统未配置，请先配置 API 信息才能开始对话。');
+            showConfigModal();
+            return;
+          }
 
           if (response.status === 429) {
             // 处理频率限制错误
@@ -913,4 +966,332 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 初始聚焦到输入框
   userInput.focus();
+
+  // ==================== 配置管理功能 ====================
+
+  // 初始化配置管理
+  async function initializeConfig() {
+    try {
+      // 检查服务器配置状态
+      const response = await fetch('/api/config');
+      const serverConfig = await response.json();
+
+      // 更新界面状态
+      updateConfigStatus(serverConfig);
+
+      // 根据配置状态渲染欢迎消息
+      renderWelcomeMessage(serverConfig.isConfigured, serverConfig.model);
+
+      // 如果未配置，显示欢迎配置界面
+      if (!serverConfig.isConfigured) {
+        showWelcomeConfigModal();
+      }
+
+      // 绑定配置相关事件
+      bindConfigEvents();
+
+    } catch (error) {
+      console.error('Failed to initialize config:', error);
+      // 如果无法连接服务器，显示未配置状态
+      renderWelcomeMessage(false);
+      showConfigStatusMessage('配置初始化失败', 'error');
+    }
+  }
+
+  // 绑定配置相关事件
+  function bindConfigEvents() {
+    // 设置按钮
+    settingsBtn.addEventListener('click', showConfigModal);
+
+    // 关闭模态框
+    closeConfigModal.addEventListener('click', hideConfigModal);
+
+    // 开始配置按钮
+    startConfigBtn.addEventListener('click', () => {
+      hideWelcomeConfigModal();
+      showConfigModal();
+    });
+
+    // API 提供商选择
+    apiProviderSelect.addEventListener('change', onApiProviderChange);
+
+    // 密码显示/隐藏
+    toggleApiKeyBtn.addEventListener('click', toggleApiKeyVisibility);
+
+    // 配置操作按钮
+    testConfigBtn.addEventListener('click', testApiConnection);
+    resetConfigBtn.addEventListener('click', resetConfiguration);
+    saveConfigBtn.addEventListener('click', saveConfiguration);
+
+    // 点击模态框外部关闭
+    configModal.addEventListener('click', (e) => {
+      if (e.target === configModal) {
+        hideConfigModal();
+      }
+    });
+
+    welcomeConfigModal.addEventListener('click', (e) => {
+      if (e.target === welcomeConfigModal) {
+        // 首次配置模态框不允许点击外部关闭
+      }
+    });
+  }
+
+  // 显示配置模态框
+  function showConfigModal() {
+    loadCurrentConfig();
+    configModal.classList.add('show');
+  }
+
+  // 隐藏配置模态框
+  function hideConfigModal() {
+    configModal.classList.remove('show');
+  }
+
+  // 显示欢迎配置模态框
+  function showWelcomeConfigModal() {
+    welcomeConfigModal.classList.add('show');
+  }
+
+  // 隐藏欢迎配置模态框
+  function hideWelcomeConfigModal() {
+    welcomeConfigModal.classList.remove('show');
+  }
+
+  // 加载当前配置
+  async function loadCurrentConfig() {
+    try {
+      const response = await fetch('/api/config');
+      const config = await response.json();
+
+      // 填充表单
+      apiProviderSelect.value = config.apiProvider || 'siliconflow';
+      baseUrlInput.value = config.baseURL || '';
+      maxTokensInput.value = config.maxTokens || 2048;
+      temperatureInput.value = config.temperature || 0.7;
+
+      // 触发提供商变更以加载模型列表
+      onApiProviderChange();
+
+      // 设置模型（需要在模型列表加载后）
+      setTimeout(() => {
+        if (config.model) {
+          const modelOption = Array.from(modelNameSelect.options).find(option => option.value === config.model);
+          if (modelOption) {
+            modelNameSelect.value = config.model;
+          } else {
+            // 如果是自定义模型
+            modelNameSelect.value = 'custom';
+            customModelInput.style.display = 'block';
+            customModelInput.value = config.model;
+          }
+        }
+      }, 100);
+
+    } catch (error) {
+      console.error('Failed to load config:', error);
+      showConfigStatusMessage('加载配置失败', 'error');
+    }
+  }
+
+  // API 提供商变更处理
+  function onApiProviderChange() {
+    const provider = apiProviderSelect.value;
+    const presets = configManager.getPresets();
+    const preset = presets[provider];
+
+    if (preset) {
+      baseUrlInput.value = preset.baseURL;
+
+      // 更新模型列表
+      modelNameSelect.innerHTML = '<option value="">请选择模型</option>';
+      preset.models.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
+        modelNameSelect.appendChild(option);
+      });
+
+      // 添加自定义选项
+      const customOption = document.createElement('option');
+      customOption.value = 'custom';
+      customOption.textContent = '自定义模型';
+      modelNameSelect.appendChild(customOption);
+    }
+
+    // 处理自定义模型输入框显示
+    modelNameSelect.addEventListener('change', () => {
+      if (modelNameSelect.value === 'custom') {
+        customModelInput.style.display = 'block';
+        customModelInput.required = true;
+      } else {
+        customModelInput.style.display = 'none';
+        customModelInput.required = false;
+      }
+    });
+  }
+
+  // 切换 API Key 可见性
+  function toggleApiKeyVisibility() {
+    if (apiKeyInput.type === 'password') {
+      apiKeyInput.type = 'text';
+      toggleApiKeyBtn.textContent = '🙈';
+    } else {
+      apiKeyInput.type = 'password';
+      toggleApiKeyBtn.textContent = '👁️';
+    }
+  }
+
+  // 测试 API 连接
+  async function testApiConnection() {
+    const config = getFormConfig();
+
+    if (!config.apiKey || !config.baseURL || !config.model) {
+      showConfigStatusMessage('请填写完整的配置信息', 'error');
+      return;
+    }
+
+    testConfigBtn.disabled = true;
+    testConfigBtn.textContent = '测试中...';
+
+    try {
+      const response = await fetch('/api/config/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(config)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showConfigStatusMessage('API 连接测试成功！', 'success');
+      } else {
+        showConfigStatusMessage(`API 连接测试失败: ${result.message}`, 'error');
+      }
+    } catch (error) {
+      showConfigStatusMessage(`测试失败: ${error.message}`, 'error');
+    } finally {
+      testConfigBtn.disabled = false;
+      testConfigBtn.textContent = '测试连接';
+    }
+  }
+
+  // 重置配置
+  async function resetConfiguration() {
+    if (!confirm('确定要重置所有配置吗？这将清除当前的 API 配置。')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/config/reset', {
+        method: 'POST'
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showConfigStatusMessage('配置已重置', 'success');
+        loadCurrentConfig();
+        updateConfigStatus(result.config);
+      } else {
+        showConfigStatusMessage('重置失败', 'error');
+      }
+    } catch (error) {
+      showConfigStatusMessage(`重置失败: ${error.message}`, 'error');
+    }
+  }
+
+  // 保存配置
+  async function saveConfiguration() {
+    const config = getFormConfig();
+
+    // 验证配置
+    const validation = configManager.validateConfig(config);
+    if (!validation.isValid) {
+      showConfigStatusMessage(`配置验证失败: ${validation.errors.join(', ')}`, 'error');
+      return;
+    }
+
+    saveConfigBtn.disabled = true;
+    saveConfigBtn.textContent = '保存中...';
+
+    try {
+      const response = await fetch('/api/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(config)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showConfigStatusMessage('配置保存成功！', 'success');
+        updateConfigStatus(result.config);
+
+        // 更新本地配置管理器
+        configManager.updateConfig(config);
+
+        // 延迟关闭模态框
+        setTimeout(() => {
+          hideConfigModal();
+          hideWelcomeConfigModal();
+        }, 1500);
+      } else {
+        showConfigStatusMessage(`保存失败: ${result.message}`, 'error');
+      }
+    } catch (error) {
+      showConfigStatusMessage(`保存失败: ${error.message}`, 'error');
+    } finally {
+      saveConfigBtn.disabled = false;
+      saveConfigBtn.textContent = '保存配置';
+    }
+  }
+
+  // 从表单获取配置
+  function getFormConfig() {
+    return {
+      apiProvider: apiProviderSelect.value,
+      apiKey: apiKeyInput.value.trim(),
+      baseURL: baseUrlInput.value.trim(),
+      model: modelNameSelect.value === 'custom' ? customModelInput.value.trim() : modelNameSelect.value,
+      maxTokens: parseInt(maxTokensInput.value) || 2048,
+      temperature: parseFloat(temperatureInput.value) || 0.7
+    };
+  }
+
+  // 更新配置状态显示
+  function updateConfigStatus(config) {
+    if (config.isConfigured) {
+      configStatusElement.textContent = '已配置';
+      configStatusElement.classList.add('configured');
+      aiNameElement.textContent = config.model || 'AI Assistant';
+
+      // 更新欢迎消息
+      renderWelcomeMessage(true, config.model);
+    } else {
+      configStatusElement.textContent = '未配置';
+      configStatusElement.classList.remove('configured');
+      aiNameElement.textContent = 'AI Assistant';
+
+      // 更新欢迎消息
+      renderWelcomeMessage(false);
+    }
+  }
+
+  // 显示配置状态消息
+  function showConfigStatusMessage(message, type = 'info') {
+    configStatusMessage.textContent = message;
+    configStatusMessage.className = `config-status-message ${type}`;
+
+    // 自动隐藏成功消息
+    if (type === 'success') {
+      setTimeout(() => {
+        configStatusMessage.className = 'config-status-message';
+      }, 3000);
+    }
+  }
 });

@@ -25,8 +25,12 @@
     <div class="main-chat">
       <div class="chat-header">
         <h1>🤖 AI Chatroom</h1>
-        <div class="ai-info">
-          <span class="ai-name">DeepSeek V3</span>
+        <div class="header-actions">
+          <div class="ai-info">
+            <span class="ai-name" id="ai-name">DeepSeek V3</span>
+            <span class="config-status" id="config-status">未配置</span>
+          </div>
+          <button class="settings-btn" id="settings-btn" title="设置">⚙️</button>
         </div>
       </div>
 
@@ -56,7 +60,94 @@
     </div>
   </div>
 
+  <!-- 配置模态框 -->
+  <div class="modal" id="config-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>⚙️ API 配置</h2>
+        <button class="close-btn" id="close-config-modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="config-form">
+          <div class="form-group">
+            <label for="api-provider">API 提供商:</label>
+            <select id="api-provider">
+              <option value="siliconflow">SiliconFlow</option>
+              <option value="openai">OpenAI</option>
+              <option value="custom">自定义</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="api-key">API Key: <span class="required">*</span></label>
+            <input type="password" id="api-key" placeholder="请输入您的 API Key" required>
+            <button type="button" class="toggle-password" id="toggle-api-key">👁️</button>
+          </div>
+
+          <div class="form-group">
+            <label for="base-url">Base URL: <span class="required">*</span></label>
+            <input type="url" id="base-url" placeholder="https://api.example.com/v1" required>
+          </div>
+
+          <div class="form-group">
+            <label for="model-name">模型名称: <span class="required">*</span></label>
+            <select id="model-name">
+              <option value="">请选择模型</option>
+            </select>
+            <input type="text" id="custom-model" placeholder="或输入自定义模型名称" style="display: none;">
+          </div>
+
+          <div class="form-group">
+            <label for="max-tokens">最大 Token 数:</label>
+            <input type="number" id="max-tokens" min="1" max="8192" value="2048">
+          </div>
+
+          <div class="form-group">
+            <label for="temperature">温度值 (0-2):</label>
+            <input type="number" id="temperature" min="0" max="2" step="0.1" value="0.7">
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-test" id="test-config">测试连接</button>
+            <button type="button" class="btn btn-reset" id="reset-config">重置配置</button>
+            <button type="button" class="btn btn-primary" id="save-config">保存配置</button>
+          </div>
+
+          <div class="config-status-message" id="config-status-message"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 首次配置提示模态框 -->
+  <div class="modal" id="welcome-config-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🎉 欢迎使用 AI Chatroom</h2>
+      </div>
+
+      <div class="modal-body">
+        <div class="welcome-message">
+          <p>欢迎使用 AI Chatroom！在开始聊天之前，请先配置您的 API 信息。</p>
+          <p>您需要提供：</p>
+          <ul>
+            <li>API Key（从您的 AI 服务提供商获取）</li>
+            <li>API Base URL（通常已预设）</li>
+            <li>模型名称（可从列表中选择）</li>
+          </ul>
+          <p>配置完成后，您就可以开始与 AI 对话了！</p>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-primary" id="start-config">开始配置</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="session-manager.js"></script>
+  <script src="config-manager.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

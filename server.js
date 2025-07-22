@@ -2,15 +2,26 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const OpenAI = require('openai');
+const ServerConfigManager = require('./src/server-config');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// 使用 SiliconFlow API（推荐写在 .env 文件中）
-const openai = new OpenAI({
-  apiKey: process.env.SILICONFLOW_API_KEY,
-  baseURL: 'https://api.siliconflow.cn/v1'
-});
+// 创建配置管理器实例
+const configManager = new ServerConfigManager();
+
+// 动态创建 OpenAI 实例的函数
+function createOpenAIInstance() {
+  const config = configManager.getConfig();
+  if (!config.apiKey || !config.baseURL) {
+    return null;
+  }
+
+  return new OpenAI({
+    apiKey: config.apiKey,
+    baseURL: config.baseURL
+  });
+}
 
 app.use(express.static('src'));
 app.use(express.json());
@@ -18,10 +29,12 @@ app.use(cors());
 
 // 健康检查
 app.get('/health', (req, res) => {
+  const config = configManager.getPublicConfig();
   res.json({
     status: 'running',
-    api: 'siliconflow',
-    model: 'deepseek-ai/DeepSeek-V3',
+    api: config.apiProvider,
+    model: config.model,
+    isConfigured: config.isConfigured,
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
@@ -29,6 +42,7 @@ app.get('/health', (req, res) => {
 
 // API 状态检查
 app.get('/api/status', (req, res) => {
+  const config = configManager.getPublicConfig();
   res.json({
     server: {
       status: 'running',
@@ -37,10 +51,11 @@ app.get('/api/status', (req, res) => {
       timestamp: new Date().toISOString()
     },
     api: {
-      provider: 'siliconflow',
-      model: 'deepseek-ai/DeepSeek-V3',
-      baseURL: 'https://api.siliconflow.cn/v1',
-      hasApiKey: !!process.env.SILICONFLOW_API_KEY,
+      provider: config.apiProvider,
+      model: config.model,
+      baseURL: config.baseURL,
+      hasApiKey: config.hasApiKey,
+      isConfigured: config.isConfigured,
       rateLimits: {
         maxRequestsPerMinute: MAX_REQUESTS_PER_MINUTE,
         windowMs: RATE_LIMIT_WINDOW
@@ -51,6 +66,71 @@ app.get('/api/status', (req, res) => {
       port: port
     }
   });
+});
+
+// 配置管理接口
+app.get('/api/config', (req, res) => {
+  const config = configManager.getPublicConfig();
+  res.json(config);
+});
+
+app.post('/api/config', async (req, res) => {
+  try {
+    const newConfig = req.body;
+
+    // 验证配置
+    const validation = configManager.validateConfig(newConfig);
+    if (!validation.isValid) {
+      return res.status(400).json({
+        error: '配置验证失败',
+        errors: validation.errors
+      });
+    }
+
+    // 更新配置
+    const updatedConfig = configManager.updateConfig(newConfig);
+
+    res.json({
+      success: true,
+      message: '配置更新成功',
+      config: configManager.getPublicConfig()
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: '配置更新失败',
+      message: error.message
+    });
+  }
+});
+
+app.post('/api/config/test', async (req, res) => {
+  try {
+    const testConfig = req.body || configManager.getConfig();
+    const result = await configManager.testConnection(testConfig);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'API 连接测试失败',
+      error: error.message
+    });
+  }
+});
+
+app.post('/api/config/reset', (req, res) => {
+  try {
+    configManager.resetConfig();
+    res.json({
+      success: true,
+      message: '配置已重置',
+      config: configManager.getPublicConfig()
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: '配置重置失败',
+      message: error.message
+    });
+  }
 });
 
 // 请求限制中间件
@@ -118,7 +198,26 @@ app.post('/api/chat', rateLimitMiddleware, async (req, res) => {
     return res.status(400).json({ error: 'Message is required' });
   }
 
+  // 检查配置是否完整
+  if (!configManager.isConfigured()) {
+    return res.status(400).json({
+      error: '系统未配置',
+      message: '请先配置 API 信息',
+      needsConfig: true
+    });
+  }
+
   try {
+    const config = configManager.getConfig();
+    const openai = createOpenAIInstance();
+
+    if (!openai) {
+      return res.status(500).json({
+        error: 'API 配置错误',
+        message: '无法创建 API 客户端'
+      });
+    }
+
     const userInput = req.body.message;
     const conversationHistory = req.body.history || []; // 接收会话历史
 
@@ -155,10 +254,10 @@ app.post('/api/chat', rateLimitMiddleware, async (req, res) => {
 
     const result = await retryWithBackoff(async () => {
       return await openai.chat.completions.create({
-        model: 'deepseek-ai/DeepSeek-V3',
+        model: config.model,
         messages: messages,
-        temperature: 0.7,
-        max_tokens: 2048,
+        temperature: config.temperature,
+        max_tokens: config.maxTokens,
         stream: false
       });
     });
@@ -168,8 +267,8 @@ app.post('/api/chat', rateLimitMiddleware, async (req, res) => {
     res.json({
       response: response,
       meta: {
-        model: 'deepseek-ai/DeepSeek-V3',
-        api: 'siliconflow',
+        model: config.model,
+        api: config.apiProvider,
         usage: result.usage,
         messageCount: messages.length
       }
@@ -213,7 +312,15 @@ app.post('/api/chat', rateLimitMiddleware, async (req, res) => {
 });
 
 app.listen(port, () => {
+  const config = configManager.getConfig();
   console.log(`Server running at http://localhost:${port}`);
-  console.log('Using SiliconFlow API with DeepSeek-V3 model');
-  console.log('API Base URL: https://api.siliconflow.cn/v1');
+
+  if (config.isConfigured) {
+    console.log(`Using ${config.apiProvider} API with ${config.model} model`);
+    console.log(`API Base URL: ${config.baseURL}`);
+    console.log('✅ API 配置已完成');
+  } else {
+    console.log('⚠️  API 未配置，请在浏览器中完成配置');
+    console.log('📝 访问 http://localhost:' + port + ' 进行配置');
+  }
 });

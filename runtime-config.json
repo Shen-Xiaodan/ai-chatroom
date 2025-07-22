@@ -1,0 +1,9 @@
+{
+  "apiProvider": "siliconflow",
+  "apiKey": "sk-bcoiryqebeijmhluyquitqqdmylaweyfenhmvqklrammcqny",
+  "baseURL": "https://api.siliconflow.cn/v1",
+  "model": "deepseek-ai/DeepSeek-V3",
+  "maxTokens": 2048,
+  "temperature": 1,
+  "isConfigured": true
+}
