@@ -243,112 +243,19 @@ document.addEventListener('DOMContentLoaded', () => {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
-  // 重试函数（带指数退避）
-  async function retryWithBackoff(fn, maxRetries = 3, baseDelay = 1000) {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const response = await fn();
-
-        // 如果是429错误且还有重试次数
-        if (response.status === 429 && attempt < maxRetries) {
-          // 指数退避
-          let waitTime = baseDelay * Math.pow(2, attempt - 1);
-
-          // 检查是否有 Retry-After 头部
-          const retryAfter = response.headers.get('retry-after');
-          if (retryAfter) {
-            const retrySeconds = parseInt(retryAfter);
-            if (!isNaN(retrySeconds)) {
-              waitTime = Math.max(waitTime, retrySeconds * 1000);
-            }
-          }
-
-          console.log(`API请求被限制，${waitTime/1000}秒后重试 (尝试 ${attempt}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-          continue;
-        }
-
-        return response;
-      } catch (error) {
-        // 网络错误或其他错误
-        if (attempt < maxRetries) {
-          const waitTime = baseDelay * Math.pow(2, attempt - 1);
-          console.log(`请求失败，${waitTime/1000}秒后重试 (尝试 ${attempt}/${maxRetries})`);
-          console.log('错误详情:', error.message);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-          continue;
-        }
-        throw error;
-      }
-    }
-  }
-
-  // 处理聊天请求（直接调用API）
+  // 处理聊天请求（可以在后台运行）
   async function handleChatRequest(sessionId, message, history, typingIndicator) {
     try {
-      // 获取配置
-      const config = configManager.getConfig();
-
-      // 检查配置是否完整
-      if (!configManager.isConfigured()) {
-        const isCurrentSession = getCurrentSessionId() === sessionId;
-        if (isCurrentSession) {
-          if (typingIndicator && typingIndicator.parentNode) {
-            chatMessages.removeChild(typingIndicator);
-          }
-          addAIMessage('⚠️ 系统未配置，请先配置 API 信息才能开始对话。');
-          showConfigModal();
-        }
-        return;
-      }
-
-      // 构建消息数组，包含会话历史
-      const messages = [];
-
-      // 添加系统提示（可选）
-      messages.push({
-        role: 'system',
-        content: '你是一个有用的AI助手。请用中文回答问题，并尽可能提供详细和准确的信息。'
-      });
-
-      // 添加会话历史（最多保留最近10轮对话以控制token使用）
-      const recentHistory = history.slice(-20); // 最近20条消息（10轮对话）
-      recentHistory.forEach(msg => {
-        if (msg.type === 'user') {
-          messages.push({
-            role: 'user',
-            content: msg.content
-          });
-        } else if (msg.type === 'ai') {
-          messages.push({
-            role: 'assistant',
-            content: msg.content
-          });
-        }
-      });
-
-      // 添加当前用户输入
-      messages.push({
-        role: 'user',
-        content: message
-      });
-
-      // 发送请求到API
-      const response = await retryWithBackoff(async () => {
-        return await fetch(config.baseURL + '/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${config.apiKey}`
-          },
-          body: JSON.stringify({
-            model: config.model,
-            messages: messages,
-            temperature: config.temperature,
-            max_tokens: config.maxTokens,
-            stream: false
-          })
-        });
+      // 发送请求到服务器
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message,
+          history
+        })
       });
 
       // 检查请求是否仍然相关（用户可能已切换会话）
@@ -373,13 +280,22 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
 
+        if (response.status === 400 && errorData.needsConfig) {
+          // 处理配置错误
+          if (isCurrentSession) {
+            addAIMessage('⚠️ 系统未配置，请先配置 API 信息才能开始对话。');
+            showConfigModal();
+          }
+          return;
+        }
+
         if (response.status === 429) {
           // 处理频率限制错误
-          const retryAfter = errorData.retry_after || 30;
-          const retrySeconds = typeof retryAfter === 'string' ? parseInt(retryAfter.replace('s', '')) : retryAfter;
+          const retryAfter = errorData.retryAfter || '30s';
+          const retrySeconds = parseInt(retryAfter.replace('s', ''));
 
           if (isCurrentSession) {
-            addAIMessage(`🚫 请求过于频繁，请等待 ${retrySeconds}s 后重试。\n\n💡 建议：\n• 减慢发送消息的频率\n• 等待指定时间后重试\n• 如果经常遇到此问题，可能需要升级API计划`);
+            addAIMessage(`🚫 请求过于频繁，请等待 ${retryAfter} 后重试。\n\n💡 建议：\n• 减慢发送消息的频率\n• 等待指定时间后重试\n• 如果经常遇到此问题，可能需要升级API计划`);
 
             // 禁用发送按钮一段时间
             sendBtn.disabled = true;
@@ -402,11 +318,10 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
-        throw new Error(`HTTP ${response.status}: ${errorData.error?.message || errorData.message || 'API调用失败'}`);
+        throw new Error(`HTTP ${response.status}: ${errorData.error || 'Network response was not ok'}`);
       }
 
       const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
 
       // 添加AI消息到指定会话
       if (window.sessionManager) {
@@ -416,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const aiMessage = {
             id: sessionManager.generateId(),
             type: 'ai',
-            content: aiResponse,
+            content: data.response,
             timestamp: new Date().toISOString()
           };
           targetSession.messages.push(aiMessage);
@@ -426,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           // 如果是当前会话，更新UI
           if (isCurrentSession) {
-            addAIMessage(aiResponse);
+            addAIMessage(data.response);
             updateSessionList();
           }
         }
@@ -742,19 +657,12 @@ document.addEventListener('DOMContentLoaded', () => {
     await regenerateAIResponse(lastUserMessage);
   }
 
-  // 重新生成AI回复（直接调用API）
+  // 重新生成AI回复
   async function regenerateAIResponse(userMessage) {
     try {
       // 检查是否有其他标签页正在thinking
       if (isAnyTabThinking() && !isCurrentTabThinking()) {
         showToast('另一个标签页正在处理消息，请稍后再试', 'warning');
-        return;
-      }
-
-      // 检查配置
-      if (!configManager.isConfigured()) {
-        showToast('系统未配置，请先配置 API 信息', 'error');
-        showConfigModal();
         return;
       }
 
@@ -783,51 +691,15 @@ document.addEventListener('DOMContentLoaded', () => {
         history = currentSession.messages || [];
       }
 
-      // 获取配置
-      const config = configManager.getConfig();
-
-      // 构建消息数组
-      const messages = [];
-      messages.push({
-        role: 'system',
-        content: '你是一个有用的AI助手。请用中文回答问题，并尽可能提供详细和准确的信息。'
-      });
-
-      // 添加会话历史（最多保留最近10轮对话）
-      const recentHistory = history.slice(-20);
-      recentHistory.forEach(msg => {
-        if (msg.type === 'user') {
-          messages.push({
-            role: 'user',
-            content: msg.content
-          });
-        } else if (msg.type === 'ai') {
-          messages.push({
-            role: 'assistant',
-            content: msg.content
-          });
-        }
-      });
-
-      // 添加当前用户输入
-      messages.push({
-        role: 'user',
-        content: userMessage
-      });
-
-      // 发送请求到API
-      const response = await fetch(config.baseURL + '/chat/completions', {
+      // 发送请求到服务器
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.apiKey}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: config.model,
-          messages: messages,
-          temperature: config.temperature,
-          max_tokens: config.maxTokens,
-          stream: false
+          message: userMessage,
+          history  // 发送会话历史
         })
       });
 
@@ -836,11 +708,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(`HTTP ${response.status}: ${errorData.error?.message || errorData.message || 'API调用失败'}`);
+        throw new Error(`HTTP ${response.status}: ${errorData.error || 'Network response was not ok'}`);
       }
 
       const data = await response.json();
-      addAIMessage(data.choices[0].message.content);
+      addAIMessage(data.response);
 
       // 清除thinking状态
       setThinkingState(false);
@@ -1334,27 +1206,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ==================== 配置管理功能 ====================
 
-  // 初始化配置管理（纯前端版本）
+  // 初始化配置管理
   async function initializeConfig() {
     try {
-      // 从本地配置管理器获取配置状态
-      const config = configManager.getConfig();
-      const isConfigured = configManager.isConfigured();
+      // 检查服务器配置状态
+      const response = await fetch('/api/config');
+      const serverConfig = await response.json();
 
       // 更新界面状态
-      updateConfigStatus({
-        isConfigured: isConfigured,
-        model: config.model,
-        apiProvider: config.apiProvider,
-        baseURL: config.baseURL,
-        hasApiKey: !!config.apiKey
-      });
+      updateConfigStatus(serverConfig);
 
       // 根据配置状态渲染欢迎消息
-      renderWelcomeMessage(isConfigured, config.model);
+      renderWelcomeMessage(serverConfig.isConfigured, serverConfig.model);
 
       // 如果未配置，显示欢迎配置界面
-      if (!isConfigured) {
+      if (!serverConfig.isConfigured) {
         showWelcomeConfigModal();
       }
 
@@ -1363,7 +1229,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (error) {
       console.error('Failed to initialize config:', error);
-      // 显示未配置状态
+      // 如果无法连接服务器，显示未配置状态
       renderWelcomeMessage(false);
       showConfigStatusMessage('配置初始化失败', 'error');
     }
@@ -1429,10 +1295,11 @@ document.addEventListener('DOMContentLoaded', () => {
     welcomeConfigModal.classList.remove('show');
   }
 
-  // 加载当前配置（纯前端版本）
+  // 加载当前配置
   async function loadCurrentConfig() {
     try {
-      const config = configManager.getConfig();
+      const response = await fetch('/api/config');
+      const config = await response.json();
 
       // 填充表单
       apiProviderSelect.value = config.apiProvider || 'siliconflow';
@@ -1441,9 +1308,16 @@ document.addEventListener('DOMContentLoaded', () => {
       temperatureInput.value = config.temperature || 0.7;
 
       // 处理 API Key 显示
-      if (config.apiKey) {
-        apiKeyInput.value = config.apiKey;
-        apiKeyInput.placeholder = '请输入您的 API Key';
+      if (config.hasApiKey) {
+        // 如果有 API Key，显示占位符，但保留本地存储的值
+        const localConfig = configManager.getConfig();
+        if (localConfig.apiKey) {
+          apiKeyInput.value = localConfig.apiKey;
+        } else {
+          // 如果本地没有，显示占位符提示用户重新输入
+          apiKeyInput.placeholder = '已配置 API Key，如需修改请重新输入';
+          apiKeyInput.value = '';
+        }
       } else {
         apiKeyInput.value = '';
         apiKeyInput.placeholder = '请输入您的 API Key';
@@ -1521,7 +1395,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 测试 API 连接（纯前端版本）
+  // 测试 API 连接
   async function testApiConnection() {
     const config = getFormConfig();
 
@@ -1537,12 +1411,20 @@ document.addEventListener('DOMContentLoaded', () => {
     testConfigBtn.textContent = '测试中...';
 
     try {
-      const result = await configManager.testConnection(config);
+      const response = await fetch('/api/config/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(config)
+      });
+
+      const result = await response.json();
 
       if (result.success) {
         showConfigStatusMessage('API 连接测试成功！配置有效，可以正常使用。', 'success');
       } else {
-        showConfigStatusMessage(`API 连接测试失败: ${result.message}`, 'error');
+        showConfigStatusMessage(`API 连接测试失败: ${result.message || result.error}`, 'error');
       }
     } catch (error) {
       showConfigStatusMessage(`测试失败: ${error.message}`, 'error');
@@ -1552,33 +1434,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 重置配置（纯前端版本）
+  // 重置配置
   async function resetConfiguration() {
     if (!confirm('确定要重置所有配置吗？这将清除当前的 API 配置。')) {
       return;
     }
 
     try {
-      const resetConfig = configManager.resetConfig();
-
-      showConfigStatusMessage('配置已重置', 'success');
-      loadCurrentConfig();
-      updateConfigStatus({
-        isConfigured: false,
-        model: resetConfig.model,
-        apiProvider: resetConfig.apiProvider,
-        baseURL: resetConfig.baseURL,
-        hasApiKey: false
+      const response = await fetch('/api/config/reset', {
+        method: 'POST'
       });
 
-      // 更新欢迎消息
-      renderWelcomeMessage(false);
+      const result = await response.json();
+
+      if (result.success) {
+        showConfigStatusMessage('配置已重置', 'success');
+        loadCurrentConfig();
+        updateConfigStatus(result.config);
+      } else {
+        showConfigStatusMessage('重置失败', 'error');
+      }
     } catch (error) {
       showConfigStatusMessage(`重置失败: ${error.message}`, 'error');
     }
   }
 
-  // 保存配置（纯前端版本）
+  // 保存配置
   async function saveConfiguration() {
     const config = getFormConfig();
 
@@ -1593,26 +1474,31 @@ document.addEventListener('DOMContentLoaded', () => {
     saveConfigBtn.textContent = '保存中...';
 
     try {
-      // 更新本地配置管理器
-      const updatedConfig = configManager.updateConfig(config);
-
-      showConfigStatusMessage('配置保存成功！', 'success');
-      updateConfigStatus({
-        isConfigured: true,
-        model: updatedConfig.model,
-        apiProvider: updatedConfig.apiProvider,
-        baseURL: updatedConfig.baseURL,
-        hasApiKey: !!updatedConfig.apiKey
+      const response = await fetch('/api/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(config)
       });
 
-      // 更新欢迎消息
-      renderWelcomeMessage(true, updatedConfig.model);
+      const result = await response.json();
 
-      // 延迟关闭模态框
-      setTimeout(() => {
-        hideConfigModal();
-        hideWelcomeConfigModal();
-      }, 1500);
+      if (result.success) {
+        showConfigStatusMessage('配置保存成功！', 'success');
+        updateConfigStatus(result.config);
+
+        // 更新本地配置管理器
+        configManager.updateConfig(config);
+
+        // 延迟关闭模态框
+        setTimeout(() => {
+          hideConfigModal();
+          hideWelcomeConfigModal();
+        }, 1500);
+      } else {
+        showConfigStatusMessage(`保存失败: ${result.message}`, 'error');
+      }
     } catch (error) {
       showConfigStatusMessage(`保存失败: ${error.message}`, 'error');
     } finally {
