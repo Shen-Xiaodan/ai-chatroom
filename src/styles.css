@@ -764,13 +764,13 @@ body {
   font-size: 12px;
   padding: 2px 8px;
   border-radius: 12px;
-  background-color: #ffc107;
+  background-color: #f4c742;
   color: #856404;
   margin-left: 8px;
 }
 
 .config-status.configured {
-  background-color: #4cba74;
+  background-color: #8e6acb;
   color: white;
 }
 
@@ -814,9 +814,9 @@ body {
   background-color: white;
   border-radius: 30px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  max-width: 500px;
+  max-width: 600px;
   width: 90%;
-  max-height: 90vh;
+  max-height: 95vh;
   overflow-y: auto;
   animation: modalSlideIn 0.3s ease;
 }

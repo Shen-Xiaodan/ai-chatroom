@@ -5,6 +5,88 @@ document.addEventListener('DOMContentLoaded', () => {
   const sessionList = document.getElementById('session-list');
   const newSessionBtn = document.getElementById('new-session-btn');
 
+  // 为当前标签页生成唯一ID
+  const tabId = 'tab_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+  const THINKING_STATE_KEY = 'ai-chatroom-thinking-state';
+
+  // 会话级别的请求跟踪
+  const sessionRequests = new Map(); // sessionId -> Promise
+  const sessionThinkingState = new Map(); // sessionId -> boolean
+
+  // Thinking状态管理函数
+  function setThinkingState(isThinking) {
+    try {
+      if (isThinking) {
+        localStorage.setItem(THINKING_STATE_KEY, JSON.stringify({
+          tabId: tabId,
+          timestamp: Date.now()
+        }));
+      } else {
+        const currentState = localStorage.getItem(THINKING_STATE_KEY);
+        if (currentState) {
+          const state = JSON.parse(currentState);
+          // 只有当前标签页才能清除thinking状态
+          if (state.tabId === tabId) {
+            localStorage.removeItem(THINKING_STATE_KEY);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to manage thinking state:', error);
+    }
+  }
+
+  function isAnyTabThinking() {
+    try {
+      const currentState = localStorage.getItem(THINKING_STATE_KEY);
+      if (!currentState) return false;
+
+      const state = JSON.parse(currentState);
+      // 检查状态是否过期（超过30秒认为是异常状态）
+      const isExpired = Date.now() - state.timestamp > 30000;
+
+      if (isExpired) {
+        localStorage.removeItem(THINKING_STATE_KEY);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Failed to check thinking state:', error);
+      return false;
+    }
+  }
+
+  function isCurrentTabThinking() {
+    try {
+      const currentState = localStorage.getItem(THINKING_STATE_KEY);
+      if (!currentState) return false;
+
+      const state = JSON.parse(currentState);
+      return state.tabId === tabId;
+    } catch (error) {
+      console.error('Failed to check current tab thinking state:', error);
+      return false;
+    }
+  }
+
+  // 会话级别的thinking状态管理
+  function setSessionThinking(sessionId, isThinking) {
+    if (isThinking) {
+      sessionThinkingState.set(sessionId, true);
+    } else {
+      sessionThinkingState.delete(sessionId);
+    }
+  }
+
+  function isSessionThinking(sessionId) {
+    return sessionThinkingState.has(sessionId);
+  }
+
+  function getCurrentSessionId() {
+    return window.sessionManager ? sessionManager.currentSessionId : null;
+  }
+
   // 配置相关元素
   const settingsBtn = document.getElementById('settings-btn');
   const configModal = document.getElementById('config-modal');
@@ -160,7 +242,136 @@ document.addEventListener('DOMContentLoaded', () => {
   function scrollToBottom() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
-  
+
+  // 处理聊天请求（可以在后台运行）
+  async function handleChatRequest(sessionId, message, history, typingIndicator) {
+    try {
+      // 发送请求到服务器
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message,
+          history
+        })
+      });
+
+      // 检查请求是否仍然相关（用户可能已切换会话）
+      const isCurrentSession = getCurrentSessionId() === sessionId;
+
+      // 移除typing indicator（如果仍在当前会话中）
+      if (isCurrentSession && typingIndicator && typingIndicator.parentNode) {
+        chatMessages.removeChild(typingIndicator);
+      }
+
+      // 清除thinking状态
+      setThinkingState(false);
+      setSessionThinking(sessionId, false);
+      sessionRequests.delete(sessionId);
+
+      // 如果在当前会话中，重新启用UI
+      if (isCurrentSession) {
+        sendBtn.disabled = false;
+        sendBtn.textContent = '发送';
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+
+        if (response.status === 400 && errorData.needsConfig) {
+          // 处理配置错误
+          if (isCurrentSession) {
+            addAIMessage('⚠️ 系统未配置，请先配置 API 信息才能开始对话。');
+            showConfigModal();
+          }
+          return;
+        }
+
+        if (response.status === 429) {
+          // 处理频率限制错误
+          const retryAfter = errorData.retryAfter || '30s';
+          const retrySeconds = parseInt(retryAfter.replace('s', ''));
+
+          if (isCurrentSession) {
+            addAIMessage(`🚫 请求过于频繁，请等待 ${retryAfter} 后重试。\n\n💡 建议：\n• 减慢发送消息的频率\n• 等待指定时间后重试\n• 如果经常遇到此问题，可能需要升级API计划`);
+
+            // 禁用发送按钮一段时间
+            sendBtn.disabled = true;
+            userInput.disabled = true;
+
+            let countdown = retrySeconds;
+            const countdownInterval = setInterval(() => {
+              sendBtn.textContent = `等待 ${countdown}s`;
+              countdown--;
+
+              if (countdown < 0) {
+                clearInterval(countdownInterval);
+                sendBtn.disabled = false;
+                userInput.disabled = false;
+                sendBtn.textContent = '发送';
+                userInput.focus();
+              }
+            }, 1000);
+          }
+          return;
+        }
+
+        throw new Error(`HTTP ${response.status}: ${errorData.error || 'Network response was not ok'}`);
+      }
+
+      const data = await response.json();
+
+      // 添加AI消息到指定会话
+      if (window.sessionManager) {
+        const targetSession = sessionManager.sessions.get(sessionId);
+        if (targetSession) {
+          // 直接添加到会话数据
+          const aiMessage = {
+            id: sessionManager.generateId(),
+            type: 'ai',
+            content: data.response,
+            timestamp: new Date().toISOString()
+          };
+          targetSession.messages.push(aiMessage);
+          targetSession.messageCount = targetSession.messages.length;
+          targetSession.updatedAt = new Date().toISOString();
+          sessionManager.saveToStorage();
+
+          // 如果是当前会话，更新UI
+          if (isCurrentSession) {
+            addAIMessage(data.response);
+            updateSessionList();
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error('Error in handleChatRequest:', error);
+
+      // 清除thinking状态
+      setThinkingState(false);
+      setSessionThinking(sessionId, false);
+      sessionRequests.delete(sessionId);
+
+      // 如果在当前会话中，处理错误UI
+      if (getCurrentSessionId() === sessionId) {
+        // 移除可能残留的typing indicator
+        if (typingIndicator && typingIndicator.parentNode) {
+          chatMessages.removeChild(typingIndicator);
+        }
+
+        // 重新启用发送按钮和输入框
+        sendBtn.disabled = false;
+        userInput.disabled = false;
+        sendBtn.textContent = '发送';
+
+        addAIMessage(`❌ 抱歉，遇到了错误：${error.message}\n\n请稍后重试。如果问题持续存在，可能是API配额限制或网络问题。`);
+      }
+    }
+  }
+
   // 发送消息到服务器
   async function sendMessage() {
     const message = userInput.value.trim();
@@ -173,6 +384,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      // 检查是否有其他标签页正在thinking
+      if (isAnyTabThinking() && !isCurrentTabThinking()) {
+        addAIMessage('⚠️ 另一个标签页正在处理消息，请稍后再试。');
+        return;
+      }
+
       // 添加用户消息
       addUserMessage(message);
       userInput.value = '';
@@ -180,7 +397,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // 重置textarea高度
       userInput.style.height = 'auto';
 
-      // 禁用发送按钮和输入框
+      const currentSessionId = getCurrentSessionId();
+
+      // 设置thinking状态并禁用发送按钮和输入框
+      setThinkingState(true);
+      setSessionThinking(currentSessionId, true);
       sendBtn.disabled = true;
       sendBtn.textContent = 'Thinking...';
 
@@ -207,83 +428,17 @@ document.addEventListener('DOMContentLoaded', () => {
           history = currentSession.messages || [];
         }
 
-        // 发送请求到服务器
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            message,
-            history  // 发送会话历史
-          })
-        });
-        
-        // 移除"正在输入"状态
-        chatMessages.removeChild(typingIndicator);
+        // 创建异步请求处理
+        const requestPromise = handleChatRequest(currentSessionId, message, history, typingIndicator);
 
-        // 重新启用发送按钮和输入框
-        sendBtn.disabled = false;
-        sendBtn.textContent = '发送';
+        // 存储请求Promise以便跟踪
+        sessionRequests.set(currentSessionId, requestPromise);
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-
-          if (response.status === 400 && errorData.needsConfig) {
-            // 处理配置错误
-            addAIMessage('⚠️ 系统未配置，请先配置 API 信息才能开始对话。');
-            showConfigModal();
-            return;
-          }
-
-          if (response.status === 429) {
-            // 处理频率限制错误
-            const retryAfter = errorData.retryAfter || '30s';
-            const retrySeconds = parseInt(retryAfter.replace('s', ''));
-
-            addAIMessage(`🚫 请求过于频繁，请等待 ${retryAfter} 后重试。\n\n💡 建议：\n• 减慢发送消息的频率\n• 等待指定时间后重试\n• 如果经常遇到此问题，可能需要升级API计划`);
-
-            // 禁用发送按钮一段时间
-            sendBtn.disabled = true;
-            userInput.disabled = true;
-
-            let countdown = retrySeconds;
-            const countdownInterval = setInterval(() => {
-              sendBtn.textContent = `等待 ${countdown}s`;
-              countdown--;
-
-              if (countdown < 0) {
-                clearInterval(countdownInterval);
-                sendBtn.disabled = false;
-                userInput.disabled = false;
-                sendBtn.textContent = '发送';
-                userInput.focus();
-              }
-            }, 1000);
-
-            return;
-          }
-
-          throw new Error(`HTTP ${response.status}: ${errorData.error || 'Network response was not ok'}`);
-        }
-
-        const data = await response.json();
-        addAIMessage(data.response);
+        // 等待请求完成
+        await requestPromise;
       } catch (error) {
-        console.error('Error:', error);
-
-        // 移除可能残留的输入指示器
-        const remainingTyping = chatMessages.querySelector('.typing-indicator');
-        if (remainingTyping) {
-          chatMessages.removeChild(remainingTyping.closest('.message'));
-        }
-
-        // 重新启用发送按钮和输入框
-        sendBtn.disabled = false;
-        userInput.disabled = false;
-        sendBtn.textContent = '发送';
-
-        addAIMessage(`❌ 抱歉，遇到了错误：${error.message}\n\n请稍后重试。如果问题持续存在，可能是API配额限制或网络问题。`);
+        console.error('Error in sendMessage:', error);
+        // 错误处理已在handleChatRequest中完成
       }
     }
   }
@@ -300,6 +455,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // 监听输入事件，自动调整高度
   userInput.addEventListener('input', autoResizeTextarea);
 
+  // 中文输入法状态跟踪
+  let isComposing = false;
+
+  // 监听输入法组合事件
+  userInput.addEventListener('compositionstart', () => {
+    isComposing = true;
+  });
+
+  userInput.addEventListener('compositionend', () => {
+    isComposing = false;
+  });
+
   // 键盘事件处理：Enter发送，Shift+Enter换行
   userInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -307,6 +474,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Shift+Enter：允许换行，不做任何处理
         return;
       } else {
+        // 检查是否在输入法组合状态中
+        if (isComposing) {
+          // 在输入法组合状态中，不发送消息
+          return;
+        }
         // 单独Enter：发送消息
         e.preventDefault();
         sendMessage();
@@ -488,6 +660,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // 重新生成AI回复
   async function regenerateAIResponse(userMessage) {
     try {
+      // 检查是否有其他标签页正在thinking
+      if (isAnyTabThinking() && !isCurrentTabThinking()) {
+        showToast('另一个标签页正在处理消息，请稍后再试', 'warning');
+        return;
+      }
+
+      // 设置thinking状态
+      setThinkingState(true);
+
       // 显示"正在重新生成"状态
       const typingIndicator = document.createElement('div');
       typingIndicator.classList.add('message', 'ai-message');
@@ -533,6 +714,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await response.json();
       addAIMessage(data.response);
 
+      // 清除thinking状态
+      setThinkingState(false);
       showToast('消息已重新生成', 'success');
     } catch (error) {
       console.error('重新生成失败:', error);
@@ -543,6 +726,8 @@ document.addEventListener('DOMContentLoaded', () => {
         chatMessages.removeChild(remainingTyping.closest('.message'));
       }
 
+      // 清除thinking状态
+      setThinkingState(false);
       showToast(`重新生成失败：${error.message}`, 'error');
     }
   }
@@ -761,11 +946,34 @@ document.addEventListener('DOMContentLoaded', () => {
   function switchToSession(sessionId) {
     if (!window.sessionManager) return;
 
+    // 清理当前的thinking状态和UI
+    cleanupThinkingState();
+
     const session = sessionManager.switchToSession(sessionId);
     if (session) {
       loadSessionMessages(session);
       updateSessionList();
     }
+  }
+
+  // 清理thinking状态和相关UI（仅清理UI，不中断后台请求）
+  function cleanupThinkingState() {
+    // 只清除全局thinking状态（跨标签页的）
+    setThinkingState(false);
+
+    // 移除可能残留的typing indicator
+    const typingIndicators = chatMessages.querySelectorAll('.typing-indicator');
+    typingIndicators.forEach(indicator => {
+      const messageElement = indicator.closest('.message');
+      if (messageElement) {
+        messageElement.remove();
+      }
+    });
+
+    // 重置发送按钮和输入框状态
+    sendBtn.disabled = false;
+    userInput.disabled = false;
+    sendBtn.textContent = '发送';
   }
 
   // 加载会话消息
@@ -783,6 +991,27 @@ document.addEventListener('DOMContentLoaded', () => {
         addAIMessageFromHistory(msg.content, msg.timestamp);
       }
     });
+
+    // 检查当前会话是否有正在进行的请求
+    if (isSessionThinking(session.id)) {
+      // 显示thinking状态
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Thinking...';
+
+      // 显示typing indicator
+      const typingIndicator = document.createElement('div');
+      typingIndicator.classList.add('message', 'ai-message');
+      typingIndicator.innerHTML = `
+        <div class="avatar">🤖</div>
+        <div class="content">
+          <div class="text typing-indicator">
+            I'm thinking<span class="dots">
+            <span>.</span><span>.</span><span>.</span></span>
+          </div>
+        </div>
+      `;
+      chatMessages.appendChild(typingIndicator);
+    }
 
     scrollToBottom();
   }
@@ -885,7 +1114,8 @@ document.addEventListener('DOMContentLoaded', () => {
       sessionManager.clearSession(sessionId);
 
       if (sessionId === sessionManager.currentSessionId) {
-        // 如果清空的是当前会话，重新加载界面
+        // 如果清空的是当前会话，清理thinking状态并重新加载界面
+        cleanupThinkingState();
         const currentSession = sessionManager.getCurrentSession();
         loadSessionMessages(currentSession);
       }
@@ -906,7 +1136,8 @@ document.addEventListener('DOMContentLoaded', () => {
       sessionManager.deleteSession(sessionId);
 
       if (wasCurrentSession) {
-        // 如果删除的是当前会话，加载新的当前会话
+        // 如果删除的是当前会话，清理thinking状态并加载新的当前会话
+        cleanupThinkingState();
         const currentSession = sessionManager.getCurrentSession();
         loadSessionMessages(currentSession);
       }
@@ -922,6 +1153,9 @@ document.addEventListener('DOMContentLoaded', () => {
     newSessionBtn.addEventListener('click', () => {
       if (!window.sessionManager) return;
 
+      // 清理当前的thinking状态和UI
+      cleanupThinkingState();
+
       const session = sessionManager.createSession();
       loadSessionMessages(session);
       updateSessionList();
@@ -935,6 +1169,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
       e.preventDefault();
       if (!window.sessionManager) return;
+
+      // 清理当前的thinking状态和UI
+      cleanupThinkingState();
 
       const session = sessionManager.createSession();
       loadSessionMessages(session);
@@ -1331,4 +1568,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }, type === 'success' ? 5000 : 4000);
     }
   }
+
+  // 页面卸载时清除thinking状态
+  window.addEventListener('beforeunload', () => {
+    setThinkingState(false);
+  });
+
+  // 页面隐藏时也清除thinking状态（用户切换标签页或最小化窗口）
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && isCurrentTabThinking()) {
+      setThinkingState(false);
+    }
+  });
 });
