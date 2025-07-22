@@ -14,14 +14,12 @@
 
 ## 🚀 在线演示
 
-**GitHub Pages**: [https://yourusername.github.io/ai-chatroom/](https://yourusername.github.io/ai-chatroom/)
-
-> 注意：请将上面的 `yourusername` 替换为您的 GitHub 用户名
+**GitHub Pages**: [https://shen-xiaodan.github.io/ai-chatroom/](https://shen-xiaodan.github.io/ai-chatroom/)
 
 ## 🎯 快速开始
 
 ### 方式一：在线使用
-直接访问 [GitHub Pages 演示](https://yourusername.github.io/ai-chatroom/) 即可使用。
+直接访问 [GitHub Pages 演示](https://shen-xiaodan.github.io/ai-chatroom/) 即可使用。
 
 ### 方式二：本地使用
 1. 下载或克隆此仓库
@@ -161,4 +159,4 @@ MIT License
 
 ---
 
-**开始使用**: [在线演示](https://yourusername.github.io/ai-chatroom/) | [下载源码](https://github.com/yourusername/ai-chatroom/archive/main.zip)
+**开始使用**: [在线演示](https://shen-xiaodan.github.io/ai-chatroom/) | [下载源码](https://github.com/Shen-Xiaodan/ai-chatroom/archive/main.zip)
