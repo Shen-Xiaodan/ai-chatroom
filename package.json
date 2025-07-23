@@ -3,26 +3,21 @@
   "version": "1.0.0",
   "homepage": "https://shen-xiaodan.github.io/ai-chatroom",
   "description": "Free AI Chatroom with Proxy API",
-  "main": "server.js",
+  "main": "src/index.html",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "npx http-server src -p 3000 -o",
+    "dev": "npx http-server src -p 3000 -o",
     "build": "node build/build.js",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^16.6.1",
-    "express": "^4.21.2",
-    "marked": "^16.1.1",
-    "node-fetch": "^3.3.2",
-    "openai": "^5.10.1"
+    "marked": "^16.1.1"
   },
   "devDependencies": {
     "fs-extra": "^11.3.0",
     "gh-pages": "^6.3.0",
-    "nodemon": "^3.1.0",
+    "http-server": "^14.1.1",
     "prettier": "3.6.2"
   }
 }
