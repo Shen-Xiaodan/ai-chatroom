@@ -284,22 +284,22 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.sessionManager) {
         const targetSession = sessionManager.sessions.get(sessionId);
         if (targetSession) {
-          // 直接添加到会话数据
-          const aiMessage = {
-            id: sessionManager.generateId(),
-            type: 'ai',
-            content: aiResponse,
-            timestamp: new Date().toISOString()
-          };
-          targetSession.messages.push(aiMessage);
-          targetSession.messageCount = targetSession.messages.length;
-          targetSession.updatedAt = new Date().toISOString();
-          sessionManager.saveToStorage();
-
-          // 如果是当前会话，更新UI
+          // 如果是当前会话，使用messageManager添加消息（会自动保存到会话）
           if (isCurrentSession) {
             messageManager.addAIMessage(aiResponse);
             updateSessionList();
+          } else {
+            // 如果不是当前会话，直接添加到会话数据
+            const aiMessage = {
+              id: sessionManager.generateId(),
+              type: 'ai',
+              content: aiResponse,
+              timestamp: new Date().toISOString()
+            };
+            targetSession.messages.push(aiMessage);
+            targetSession.messageCount = targetSession.messages.length;
+            targetSession.updatedAt = new Date().toISOString();
+            sessionManager.saveToStorage();
           }
         }
       }
