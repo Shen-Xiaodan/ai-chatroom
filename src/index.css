@@ -1,0 +1,39 @@
+/* 全局样式重置和基础设置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  background:
+    radial-gradient(circle at top left, rgba(141, 58, 47, 0.08), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(22, 22, 22, 0.06), transparent 28%),
+    #f4efe6;
+}
+
+body {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0)),
+    radial-gradient(circle at 20% 0%, rgba(141, 58, 47, 0.09), transparent 24%),
+    radial-gradient(circle at 80% 100%, rgba(22, 22, 22, 0.05), transparent 30%),
+    #f4efe6;
+  min-height: 100vh;
+  color: #1c1b19;
+  overflow: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+  width: 100vw;
+}
